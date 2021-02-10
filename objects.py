@@ -61,14 +61,20 @@ class PlateObject(object):
         self.W = box[2] - box[0]
         self.H = box[3] - box[1]
 
-        self.PlatesList = {}
+        self.Centr = (int((box[0] + box[2])/2.0), int((box[1] + box[3])/2))
 
-    def updateSet(self, PlateString):
+        self.PlatesDict = {}
+
+    def updateDict(self, PlateString):
         #Check length of detected string (polish license plate should be shorter than 8 chars)
         #and if it wasn't detected yet add to Detected Plate dict
         if len(PlateString) > 8: return
         if len(PlateString) < 5: return
         
-        d = self.PlatesList.get(PlateString, False)
-        if not d: self.PlatesList[PlateString] = 1
-        else: self.PlatesList[PlateString] += 1
+        d = self.PlatesDict.get(PlateString, False)
+        if not d: self.PlatesDict[PlateString] = 1
+        else: self.PlatesDict[PlateString] += 1
+
+    def getPlateNumber(self):
+        plateNumber = max(self.PlatesDict, key=self.PlatesDict.get)
+        return plateNumber, self.PlatesList[plateNumber]

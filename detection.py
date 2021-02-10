@@ -29,7 +29,6 @@ class Detection:
         self.CharNumber = 0
         self.PlateNum = 0
         self.EmptyFrame = 0
-        self.Tracker = Tracker(maxMissing = 5, maxDistance = 50)
         self.PlatesDataset = {}
 
         self.FLAG = edict() 
@@ -39,11 +38,11 @@ class Detection:
         #self.FLAG.weights = './model/custom-416'
         self.FLAG.weights = 'C:/Users/Bazyl/Desktop/modelYolov4'
         self.FLAG.framework = "tf"
-        self.FLAG.display = False
-        self.Numbers = {"i" for i in range(10)}
+        self.FLAG.display = True
+        self.Numbers = {str(i) for i in range(10)}
 
         self.OCR=CustomOCR()
-        
+        self.Track = Tracker(maxMissing = 5, maxDistance = 100)
 
     ###########image preprocessing: active treshold and erode(if specified)########
     def preprocess(self, img):
@@ -192,7 +191,7 @@ class Detection:
 
         error_num=0
 
-        ret, trackedIDs = self.Tracker(boxes)
+        ret, trackedIDs = self.Track.update(boxes)
         if not ret: return
 
         for id in list(trackedIDs.keys()):
@@ -209,7 +208,7 @@ class Detection:
                 print("Error occured during findLetters func\nEmpty frame cannot be resized!\n ")
                 continue
 
-            mean, blurry = self.blurryFFT(plt, size = 40, thresh = -10)
+            mean, blurry = self.blurryFFT(plt, size = 35, thresh = -15)
             if blurry:
                 if self.FLAG.display:
                     text = "Blurry ({:.4f})"
@@ -293,7 +292,7 @@ class Detection:
             print(plate_string)
             print(str(error_num))
             #if plate_string != '': self.set_DetectedPlate(plate_string)
-            if plate_string != '': self.PlatesDataset[id].updateSet(plate_string)
+            if plate_string != '': self.PlatesDataset[id].updateDict(plate_string)
 
 
     def rotate(self,img,angle,center=None,scale=1.0):
@@ -311,25 +310,6 @@ class Detection:
 
         # return the rotated image
         return rotated
-
-    def cropRotatedRect(self, img, rect):
-        # rotate img
-        angle = rect[2]
-        rows,cols = img.shape[0], img.shape[1]
-        M = cv2.getRotationMatrix2D((cols/2,rows/2),angle,1)
-        img_rot = cv2.warpAffine(img,M,(cols,rows))
-
-        # rotate bounding box
-        rect0 = (rect[0], rect[1], 0.0) 
-        box = cv2.boxPoints(rect0)
-        pts = np.int0(cv2.transform(np.array([box]), M))[0]    
-        pts[pts < 0] = 0
-
-        # crop
-        img_crop = img_rot[pts[1][1]:pts[0][1], 
-                           pts[1][0]:pts[2][0]]
-
-        return img_crop
 
     def cropSubPix(self, img, rect):
         center, size, angle = rect[0], rect[1], rect[2]
@@ -365,19 +345,20 @@ class Detection:
 
         return imgGrayscalePlusTopHatMinusBlackHat
 
-    def set_DetectedPlate(self, PlateString):
-        #Check length of detected string (polish license plate should be shorter than 8 chars)
-        #and if it wasn't detected yet add to Detected Plate dict
-        if PlateString[0] in self.Numbers: PlateString[1:]
-        if len(PlateString) > 8: return
-        if len(PlateString) < 5: return
-        
-        d = self.DetectedPlates.get(PlateString, False)
-        if not d: self.DetectedPlates[PlateString] = 1
-        else: self.DetectedPlates[PlateString] += 1
+    def set_DetectedPlate(self):
+        for id in len(self.PlatesDataset):
+            key, val = self.PlateDataser[id].getPlateNumber()
+            self.DetectedPlates[key] = val
+    
 
 
     def saveResults(self):
+        if len(self.DetectedPlates) == 0:
+            self.set_DetecedPlate()
+        if len(self.DetectedPlates) == 0:
+            print("No Plates recorded")
+            return
+
         with open("testResult.txt","w") as file:
             for plate, qty in self.DetectedPlates.items():
                 if qty>0:
