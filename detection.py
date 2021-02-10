@@ -11,7 +11,8 @@ import time
 import glob
 import copy
 
-from contour import Contour
+from tracker import Tracker
+from objects import Contour, PlateObject
 from customOCR import CustomOCR
 
 
@@ -28,6 +29,8 @@ class Detection:
         self.CharNumber = 0
         self.PlateNum = 0
         self.EmptyFrame = 0
+        self.Tracker = Tracker(maxMissing = 5, maxDistance = 50)
+        self.PlatesDataset = {}
 
         self.FLAG = edict() 
         self.FLAG.size = 416
@@ -37,13 +40,13 @@ class Detection:
         self.FLAG.weights = 'C:/Users/Bazyl/Desktop/modelYolov4'
         self.FLAG.framework = "tf"
         self.FLAG.display = False
-        self.Numbers = {i for i in range(10)}
+        self.Numbers = {"i" for i in range(10)}
 
         self.OCR=CustomOCR()
-        #self.setYoloTensor()           ##Comment for OCR test !!!!!!!
+        
 
     ###########image preprocessing: active treshold and erode(if specified)########
-    def preprocess(self, img, conv=False):
+    def preprocess(self, img):
         MORPH_KERNEL=np.ones((3,3),np.uint8)      #kernel for morph operations
         #img=self.rotate(src,-15)
 
@@ -59,10 +62,8 @@ class Detection:
         #imgTresh=cv2.threshold(img,0,255,cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)[1]
         imgTresh=cv2.bitwise_not(imgTresh)
         
-
-        if conv==True:
-            imgTresh=cv2.dilate(imgTresh,MORPH_KERNEL,iterations=1)
-            imgTresh=cv2.erode(imgTresh,MORPH_KERNEL,iterations=2)
+        imgTresh=cv2.dilate(imgTresh,MORPH_KERNEL,iterations=1)
+        imgTresh=cv2.erode(imgTresh,MORPH_KERNEL,iterations=2)
         return imgTresh
 
 
@@ -139,9 +140,11 @@ class Detection:
         result = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
      
         
-        plates=self.cutBox(frame, pred_bbox, False)
+        rects = self.cutBox(frame, pred_bbox, False)
         
-        return result, plates
+        #result is a frame with boxes on detectons 
+        #rects are coordinates of detected boxes
+        return result, rects
 
     #######################################################
 
@@ -151,7 +154,8 @@ class Detection:
         frame_w, frame_h=frame.shape[:2]
         boxes, scores, classes, num_boxes=predbox
 
-        plates=[]
+        rects = []
+        #plates = []
         for i in range(num_boxes[0]):
             coor=boxes[0][i]
             coor[0]=int(coor[0])
@@ -164,8 +168,10 @@ class Detection:
             if coor[1] - 15 < 0 or coor[2] + 15 > frame_w: continue
             if coor[2] - 15 < 0 or coor[2] + 15 > frame_w: continue
 
-            cropped=frame[int(coor[0])-15:int(coor[2])+15,int(coor[1])-15:int(coor[3])+15]
-            plates.append(cropped)
+            #Box structure: [Xstart, Ystart, Xend, Yend]
+            rects.append([int(coor[1])-15, int(coor[0])-15,int(coor[3])+15,int(coor[2])+15])
+            #cropped=frame[int(coor[0])-15:int(coor[2])+15,int(coor[1])-15:int(coor[3])+15]
+            #plates.append(cropped)
 
         ## Saving plates image
         if save == True:
@@ -174,30 +180,34 @@ class Detection:
             for pic in range(len(plates)):
                 cv2.imwrite(path+str(pic)+'.jpg',plates[pic])
         
-        return plates     
+        return rects     
 
 ###########################################################################
 
 
-    def findLetters(self, img=None):
+    def findLetters(self, img = None, boxes = None):
 
-        ## plate example for test
-        if img == None: plates=glob.glob('./DataSet/Plates/*.jpg')
-        else: plates = img
+        ## plate examples for test
+        #if img == None and boxes == None: plates=glob.glob('./DataSet/Plates/*.jpg')
 
         error_num=0
 
-        for plate in plates:
-            if img == None: plt=cv2.imread(plate,cv2.IMREAD_GRAYSCALE)
-            else: plt=plate
-            self.PlateNum += 1
+        ret, trackedIDs = self.Tracker(boxes)
+        if not ret: return
 
-            try:
+        for id in list(trackedIDs.keys()):
+            if not self.PlatesDataset.get(id, False):
+                boxId = list(trackedIDs[id])[1]
+                self.PlatesDataset[id] = PlateObject(boxes[boxId], id)
+
+            plt = img[self.PlatesDataset[id].Y : self.PlatesDataset[id].Y + self.PlatesDataset[id].H,
+                      self.PlatesDataset[id].X : self.PlatesDataset[id].X + self.PlatesDataset[id].W]
+
+            try:  
                 plt = cv2.resize(plt,None,fx=3.0,fy=3.0,interpolation = cv2.INTER_CUBIC)
             except:
                 print("Error occured during findLetters func\nEmpty frame cannot be resized!\n ")
                 continue
-            #self.saveIMG(plate)
 
             mean, blurry = self.blurryFFT(plt, size = 40, thresh = -10)
             if blurry:
@@ -213,7 +223,7 @@ class Detection:
                 cv2.imshow("Source", plt)
                 cv2.waitKey(1)
             
-            plt=self.preprocess(plt, True)   #apply: threshold, gaussian blur and morph(if true)
+            plt=self.preprocess(plt)   #apply: threshold, gaussian blur and morph(if true)
 
             #find contours on image: with canny edges first
             edges = cv2.Canny(plt,100,200)
@@ -226,7 +236,7 @@ class Detection:
             #sort contours (from left to right) 
             sorted_contours = sorted(contours, key=lambda ctr: cv2.boundingRect(ctr)[0])    
 
-            plate_num=""
+            plate_string=""
 
             CtrPrev=Contour(sorted_contours[0])     #to avoid error at lieIn func on 1st contours
             for con in sorted_contours:
@@ -244,10 +254,10 @@ class Detection:
                 #criteria for letter posibility:             
                 if Ctr.PossibleLetter == False: continue
 
+                #Check if contour is inside of previous contour
                 if CtrPrev.lieIn(Ctr): 
                     Ctr.PossibleLetter = False
-                    continue
-                             
+                    continue        
 
                 CtrPrev = Contour(con, img_height)
                 
@@ -264,26 +274,26 @@ class Detection:
                 try:
                     charStr = self.OCR.prediction(char)
                     
-                    plate_num += charStr  
-                    print(charStr)
+                    plate_string += charStr  
+                    
                     if self.FLAG.display:
+                        print(charStr)
                         cv2.imshow("char",char)
                         cv2.waitKey(0)
                     
                     #cv2.imwrite('./DataSet/Chars/pack2/'+str(self.CharNumber)+'.jpg', char)
-                    self.CharNumber += 1
+                    #self.CharNumber += 1
                 except:
-                    print("Unexpected Error")
+                    print("Unexpected Error\n")
                     error_num += 1
-               
-                    ######## end of try ######
+
                 char=None
                 
             
-            print(plate_num)
+            print(plate_string)
             print(str(error_num))
-            if plate_num != '': self.set_DetectedPlate(plate_num)
-            
+            #if plate_string != '': self.set_DetectedPlate(plate_string)
+            if plate_string != '': self.PlatesDataset[id].updateSet(plate_string)
 
 
     def rotate(self,img,angle,center=None,scale=1.0):

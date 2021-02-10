@@ -49,3 +49,26 @@ class Contour(object):
            return False
         else:
             return True
+
+class PlateObject(object):
+    """Store all details about detected plate object"""
+
+    def __init__(self, box, objectID):
+        self.ObjectID = objectID
+        
+        self.X = box[0]
+        self.Y = box[1]
+        self.W = box[2] - box[0]
+        self.H = box[3] - box[1]
+
+        self.PlatesList = {}
+
+    def updateSet(self, PlateString):
+        #Check length of detected string (polish license plate should be shorter than 8 chars)
+        #and if it wasn't detected yet add to Detected Plate dict
+        if len(PlateString) > 8: return
+        if len(PlateString) < 5: return
+        
+        d = self.PlatesList.get(PlateString, False)
+        if not d: self.PlatesList[PlateString] = 1
+        else: self.PlatesList[PlateString] += 1

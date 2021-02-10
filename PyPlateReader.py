@@ -45,8 +45,8 @@ if video:
         else:
             #frame = undist
             frame = cal.undistort(undist)
-            result, plates=det.detectYoloTensor(frame)
-            det.findLetters(plates)
+            result, boxes=det.detectYoloTensor(frame)
+            det.findLetters(frame,boxes)
 
             frame = cv2.resize(frame, None, fx=0.4, fy=0.4)
             cv2.imshow("frame", frame)
@@ -70,7 +70,7 @@ elif images == True and video == False:
 else:
     print("Wrong Test Params")
     
-det.saveResults()
+#det.saveResults()
 
 
 if video==True:
