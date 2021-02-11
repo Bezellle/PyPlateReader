@@ -31,17 +31,13 @@ class Tracker(object):
 
     def update(self, rects):
         #check if there are no objects detected if True add to missing or 
-        #go out of tracker scope
-        #for now just go out of scope. Add missing in the future
+        #go out of tracker scope if number of missed frames is higher than thesh
+
         if len(rects) == 0:
             for objectID in list(self.Objects.keys()):
-                self.outOfScope(objectID)
-
-            #for objectID in list(self.Missing.keys()):
-            #    self.Missing[objectID] += 1
-
-            #    if self.Missing[objectID] > self.maxMissing:
-            #        self.outOfScope(objectID)
+                self.Missing[objectID] += 1
+                if self.Missing[objectID] > self.MaxMissing:
+                    self.outOfScope(objectID)
 
             # return early as there are no centroids or tracking info
             # to update
@@ -96,12 +92,14 @@ class Tracker(object):
             if len(unusedRows) > 0:
                 for row in unusedRows:
                     ID = objectIds[row]
-                    self.outOfScope(ID)
+                    self.Missing[ID] += 1
+                    if self.Missing[ID] > self.MaxMissing:
+                        self.outOfScope(ID)
+                    else:
+                        self.Objects[ID][1] = -1
 
             if len(unusedCols) > 0:
                 for col in unusedCols:
                     self.add(inputCentroids[col], col)
 
         return True, self.Objects
-
-                    

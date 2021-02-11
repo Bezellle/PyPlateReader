@@ -42,7 +42,7 @@ class Detection:
         self.Numbers = {str(i) for i in range(10)}
 
         self.OCR=CustomOCR()
-        self.Track = Tracker(maxMissing = 5, maxDistance = 100)
+        self.Track = Tracker(maxMissing = 5, maxDistance = 200)
 
     ###########image preprocessing: active treshold and erode(if specified)########
     def preprocess(self, img):
@@ -189,15 +189,20 @@ class Detection:
         ## plate examples for test
         #if img == None and boxes == None: plates=glob.glob('./DataSet/Plates/*.jpg')
 
-        error_num=0
+        error_num = 0
 
         ret, trackedIDs = self.Track.update(boxes)
         if not ret: return
 
         for id in list(trackedIDs.keys()):
+            boxId = list(trackedIDs[id])[1]
+            if boxId == -1:
+                continue
+
             if not self.PlatesDataset.get(id, False):
-                boxId = list(trackedIDs[id])[1]
                 self.PlatesDataset[id] = PlateObject(boxes[boxId], id)
+            else:
+                self.PlatesDataset[id].newPosition(boxes[boxId])
 
             plt = img[self.PlatesDataset[id].Y : self.PlatesDataset[id].Y + self.PlatesDataset[id].H,
                       self.PlatesDataset[id].X : self.PlatesDataset[id].X + self.PlatesDataset[id].W]
@@ -289,8 +294,9 @@ class Detection:
                 char=None
                 
             
-            print(plate_string)
-            print(str(error_num))
+            print("Object nr: ", str(id), " - ", plate_string)
+            if error_num > 0:
+                print(str(error_num))
             #if plate_string != '': self.set_DetectedPlate(plate_string)
             if plate_string != '': self.PlatesDataset[id].updateDict(plate_string)
 

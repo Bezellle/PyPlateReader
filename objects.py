@@ -1,4 +1,3 @@
-import numpy as np
 import cv2
 
 class Contour(object):
@@ -77,4 +76,12 @@ class PlateObject(object):
 
     def getPlateNumber(self):
         plateNumber = max(self.PlatesDict, key=self.PlatesDict.get)
-        return plateNumber, self.PlatesList[plateNumber]
+        return plateNumber, self.PlatesDict[plateNumber]
+
+    def newPosition(self, box):
+        self.X = box[0]
+        self.Y = box[1]
+        self.W = box[2] - box[0]
+        self.H = box[3] - box[1]
+
+        self.Centr = (int((box[0] + box[2]) / 2.0), int((box[1] + box[3]) / 2))
