@@ -36,7 +36,7 @@ class Detection:
         self.FLAG.tiny = False
         self.FLAG.model = "yolov4"
         #self.FLAG.weights = './model/custom-416'
-        self.FLAG.weights = 'C:/Users/Bazyl/Desktop/modelYolov4'
+        self.FLAG.weights = './model/modelYolov4'
         self.FLAG.framework = "tf"
         self.FLAG.display = True
         self.Numbers = {str(i) for i in range(10)}

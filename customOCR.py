@@ -6,7 +6,7 @@ from cv2 import resize
 
 class CustomOCR:
     def __init__(self):
-        model=tf.keras.models.load_model('D:\\praca\\PyPlateReader\\model\\CustomOCR')
+        model=tf.keras.models.load_model('.\\model\\CustomOCR')
         self.probModel=tf.keras.Sequential([model, tf.keras.layers.Softmax()])
 
         alphabet=list(string.ascii_uppercase)
