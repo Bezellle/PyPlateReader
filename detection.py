@@ -18,7 +18,7 @@ from customOCR import CustomOCR
 
 class Detection:
     """description of class"""
-    def __init__(self):
+    def __init__(self, display=False):
         self.classes=["plate"]
         physical_devices=tf.config.experimental.list_physical_devices('GPU')
         print(physical_devices)
@@ -29,7 +29,7 @@ class Detection:
         self.CharNumber = 0
         self.PlateNum = 0
         self.EmptyFrame = 0
-        self.PlatesDataset = {}
+        self.PlatesObjDataset = {}
 
         self.FLAG = edict() 
         self.FLAG.size = 416
@@ -38,11 +38,11 @@ class Detection:
         #self.FLAG.weights = './model/custom-416'
         self.FLAG.weights = './model/modelYolov4'
         self.FLAG.framework = "tf"
-        self.FLAG.display = True
+        self.FLAG.display = display
         self.Numbers = {str(i) for i in range(10)}
 
         self.OCR=CustomOCR()
-        self.Track = Tracker(maxMissing = 5, maxDistance = 200)
+        self.Track = Tracker(maxMissing = 5, maxDistance = 225)
 
     ###########image preprocessing: active treshold and erode(if specified)########
     def preprocess(self, img):
@@ -119,7 +119,6 @@ class Detection:
                 boxes=value[:, :, 0:4]
                 pred_conf=value[:, :, 4:]
 
-
         #combined boxes based on IOU
         boxes, scores, classes, valid_detections = tf.image.combined_non_max_suppression(
             boxes=tf.reshape(boxes, (tf.shape(boxes)[0], -1, 1, 4)),
@@ -137,8 +136,7 @@ class Detection:
         image = utils.draw_bbox(frame, pred_bbox)
         image = Image.fromarray(image.astype(np.uint8))
         result = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
-     
-        
+
         rects = self.cutBox(frame, pred_bbox, False)
         
         #result is a frame with boxes on detectons 
@@ -186,7 +184,7 @@ class Detection:
 
     def findLetters(self, img = None, boxes = None):
 
-        ## plate examples for test
+        # plate examples for test
         #if img == None and boxes == None: plates=glob.glob('./DataSet/Plates/*.jpg')
 
         error_num = 0
@@ -199,13 +197,13 @@ class Detection:
             if boxId == -1:
                 continue
 
-            if not self.PlatesDataset.get(id, False):
-                self.PlatesDataset[id] = PlateObject(boxes[boxId], id)
+            if not self.PlatesObjDataset.get(id, False):
+                self.PlatesObjDataset[id] = PlateObject(boxes[boxId], id)
             else:
-                self.PlatesDataset[id].newPosition(boxes[boxId])
+                self.PlatesObjDataset[id].newPosition(boxes[boxId])
 
-            plt = img[self.PlatesDataset[id].Y : self.PlatesDataset[id].Y + self.PlatesDataset[id].H,
-                      self.PlatesDataset[id].X : self.PlatesDataset[id].X + self.PlatesDataset[id].W]
+            plt = img[self.PlatesObjDataset[id].Y: self.PlatesObjDataset[id].Y + self.PlatesObjDataset[id].H,
+                  self.PlatesObjDataset[id].X: self.PlatesObjDataset[id].X + self.PlatesObjDataset[id].W]
 
             try:  
                 plt = cv2.resize(plt,None,fx=3.0,fy=3.0,interpolation = cv2.INTER_CUBIC)
@@ -298,7 +296,7 @@ class Detection:
             if error_num > 0:
                 print(str(error_num))
             #if plate_string != '': self.set_DetectedPlate(plate_string)
-            if plate_string != '': self.PlatesDataset[id].updateDict(plate_string)
+            if plate_string != '': self.PlatesObjDataset[id].updateDict(plate_string)
 
 
     def rotate(self,img,angle,center=None,scale=1.0):
@@ -352,22 +350,21 @@ class Detection:
         return imgGrayscalePlusTopHatMinusBlackHat
 
     def set_DetectedPlate(self):
-        for id in len(self.PlatesDataset):
-            key, val = self.PlateDataser[id].getPlateNumber()
-            self.DetectedPlates[key] = val
-    
-
+        for id in range(len(self.PlatesObjDataset)):
+            key, val = self.PlatesObjDataset[id].getPlateNumber()
+            if key is not None:
+                self.DetectedPlates[key] = val
 
     def saveResults(self):
         if len(self.DetectedPlates) == 0:
-            self.set_DetecedPlate()
+            self.set_DetectedPlate()
         if len(self.DetectedPlates) == 0:
             print("No Plates recorded")
             return
 
-        with open("testResult.txt","w") as file:
+        with open("testResult.txt", "w") as file:
             for plate, qty in self.DetectedPlates.items():
-                if qty>0:
+                if qty > 0:
                     file.write(str(plate) + " " + str(qty) + "\n")
 
     def saveIMG(self, img):

@@ -1,5 +1,6 @@
 from calibration import Calibration 
 from detection import Detection
+from fps import FPSTracker
 import cv2
 import numpy as np
 import glob
@@ -7,13 +8,13 @@ import time
 
 #test_path=glob.glob('D:\\praca\\GoProFusion\\15.01.2020\\*.jpg')
 test_path=glob.glob('D:\\praca\\PyPlateReader\\DataSet\\train\\*.jpg')
-
+fps_logger = FPSTracker("Frame_load", "Calibration", "Yolo_Detection", "Plate_reading", "Total")
 
 cal=Calibration()
 #cal.calibrateVideo()
 cal.loadCameraParam(cal.VideoParamPath)
 
-det=Detection()      #enable setYolo()
+det= Detection()  #enable setYolo()
 det.setYoloTensor()
 
 frameCount=0
@@ -22,31 +23,41 @@ emptyFrames=0
 video = True
 images = False
 
-#start_time = time.time()
-#det.findLetters(None)
-#end_time = time.time() - start_time
-
-#print("Detection time: ", str(end_time))
+fps_logger["Total"].start()
 
 if video:
     cap=cv2.VideoCapture("GPFR1846.MP4")
     start_frame_number = 50
     cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame_number)
     while(cap.isOpened()):
-        ret, undist=cap.read()
+        fps_logger["Frame_load"].start()
+        ret, undist = cap.read()
+        fps_logger["Frame_load"].stop()
+
         frameCount += 1
 
         if frameCount%5 != 0:
             continue
 
-        if ret == False:
+        # if frameCount == 75:
+        #     break
+
+        if not ret:
             print("Empty Frames: ", str(frameCount))
             break
         else:
             #frame = undist
+            fps_logger["Calibration"].start()
             frame = cal.undistort(undist)
-            result, boxes=det.detectYoloTensor(frame)
-            det.findLetters(frame,boxes)
+            fps_logger["Calibration"].stop()
+
+            fps_logger["Yolo_Detection"].start()
+            result, boxes = det.detectYoloTensor(frame)
+            fps_logger["Yolo_Detection"].stop()
+
+            fps_logger["Plate_reading"].start()
+            det.findLetters(frame, boxes)
+            fps_logger["Plate_reading"].stop()
 
             frame = cv2.resize(frame, None, fx=0.4, fy=0.4)
             cv2.imshow("frame", frame)
@@ -54,7 +65,7 @@ if video:
                 break
     
     cap.release()
-elif images == True and video == False:
+elif images and not video:
     for pic in test_path:
         img=cv2.imread(pic,cv2.IMREAD_UNCHANGED)
         img=cal.undistort(img)
@@ -69,12 +80,12 @@ elif images == True and video == False:
         #    break
 else:
     print("Wrong Test Params")
-    
-#det.saveResults()
 
+fps_logger["Total"].stop()
+det.saveResults()
 
-if video==True:
+fps_logger.saveLog()
+if video:
     cap.release()
-
 
 cv2.destroyAllWindows()

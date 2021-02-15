@@ -75,7 +75,10 @@ class PlateObject(object):
         else: self.PlatesDict[PlateString] += 1
 
     def getPlateNumber(self):
-        plateNumber = max(self.PlatesDict, key=self.PlatesDict.get)
+        if len(self.PlatesDict) > 0:
+            plateNumber = max(self.PlatesDict, key=self.PlatesDict.get)
+        else:
+            return None, 0
         return plateNumber, self.PlatesDict[plateNumber]
 
     def newPosition(self, box):
