@@ -182,7 +182,7 @@ class Calibration(object):
             if not dim3:
                 dim3=dim1
 
-            scaled_K=self.K*dim1[0]/self.Dim[0]
+            scaled_K = self.K*dim1[0]/self.Dim[0]
           
             #new_K = cv2.fisheye.estimateNewCameraMatrixForUndistortRectify(scaled_K, self.D, dim2, np.eye(3), balance=0.0)
             #print(new_K,"\n\n",scaled_K)
@@ -198,4 +198,11 @@ class Calibration(object):
         #cv2.waitKey(0)
         #cv2.destroyAllWindows()
         return undistorted_img
-    
+
+    def cutout(self, img):
+        img_h, img_w = img.shape[:2]
+        border_y = 100
+        border_x = 100
+
+        cut_out = img[border_y:img_h - border_y, border_x:img_w - border_x]
+        return cut_out

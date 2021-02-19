@@ -20,7 +20,7 @@ class FPS(object):
             fps = 1/self.FrameTime
 
         if print_FPS:
-            print("FPS: ", fps)
+            print(self.Name+" FPS: ", fps)
 
     def logFps(self):
         if self.TotalTime != 0:
@@ -44,6 +44,6 @@ class FPSTracker(FPS):
         return self.FPSobjects[item]
 
     def saveLog(self):
-        with open('./Log_FPS.txt', 'w') as file:
+        with open('./log/Log_FPS.txt', 'w') as file:
             for fps_obj in self.FPSobjects.keys():
                 file.write(self.FPSobjects[fps_obj].logFps()+"\n")

@@ -6,27 +6,26 @@ import numpy as np
 import glob
 import time
 
-#test_path=glob.glob('D:\\praca\\GoProFusion\\15.01.2020\\*.jpg')
-test_path=glob.glob('D:\\praca\\PyPlateReader\\DataSet\\train\\*.jpg')
+test_path=glob.glob('.\\DataSet\\train\\*.jpg')
 fps_logger = FPSTracker("Frame_load", "Calibration", "Yolo_Detection", "Plate_reading", "Total")
 
 cal=Calibration()
 #cal.calibrateVideo()
 cal.loadCameraParam(cal.VideoParamPath)
 
-det= Detection()  #enable setYolo()
+det = Detection(display=False)
 det.setYoloTensor()
 
-frameCount=0
-emptyFrames=0
+frameCount = 0
+emptyFrames = 0
 
 video = True
 images = False
 
 fps_logger["Total"].start()
-
+# TODO: frame controll / Timestamp
 if video:
-    cap=cv2.VideoCapture("GPFR1846.MP4")
+    cap = cv2.VideoCapture("GPFR1846.MP4")
     start_frame_number = 50
     cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame_number)
     while(cap.isOpened()):
@@ -46,9 +45,10 @@ if video:
             print("Empty Frames: ", str(frameCount))
             break
         else:
-            #frame = undist
+            frame = undist
             fps_logger["Calibration"].start()
-            frame = cal.undistort(undist)
+            #frame = cal.undistort(undist)
+            frame = cal.cutout(undist)
             fps_logger["Calibration"].stop()
 
             fps_logger["Yolo_Detection"].start()
@@ -71,7 +71,7 @@ elif images and not video:
         img=cal.undistort(img)
 
         #result whole img with drawbox on plates, plates - cropped img of plate
-        result, plates=det.detectYoloTensor(img)
+        result, plates = det.detectYoloTensor(img)
  
         det.findLetters(plates)
         frameCount += 1

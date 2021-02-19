@@ -4,22 +4,24 @@ import string
 import copy
 from cv2 import resize
 
+
+#TODO: Check letters: 0, b, u, i, e
 class CustomOCR:
     def __init__(self):
-        model=tf.keras.models.load_model('.\\model\\CustomOCR')
-        self.probModel=tf.keras.Sequential([model, tf.keras.layers.Softmax()])
+        model = tf.keras.models.load_model('.\\model\\CustomOCR')
+        self.probModel = tf.keras.Sequential([model, tf.keras.layers.Softmax()])
 
-        alphabet=list(string.ascii_uppercase)
-        numbers=[str(k) for k in range(10)]
+        alphabet = list(string.ascii_uppercase)
+        numbers = [str(k) for k in range(10)]
         self.classes = numbers+alphabet
-        self.inputSize=(30,50)
-        self.thresh=0.4
+        self.inputSize = (30, 50)
+        self.thresh = 0.4
 
     def prediction(self, char):
-        img=copy.deepcopy(char)
+        img = copy.deepcopy(char)
 
-        img=resize(img,self.inputSize)
-        img=np.expand_dims(img,0).astype(np.float32)/255
+        img = resize(img, self.inputSize)
+        img = np.expand_dims(img, 0).astype(np.float32)/255
 
         result = self.probModel.predict(img)
         result_index = np.argmax(result)

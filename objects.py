@@ -1,20 +1,26 @@
 import cv2
+import numpy as np
 
 class Contour(object):
     """description of class"""
 
-    def __init__(self, con, imgHeight=1):
-        x, y, w, h=cv2.boundingRect(con)
-        
-        self.X=x
-        self.Y=y
-        self.Width=w
-        self.Height=h
-        self.Center = (x+w/2, y+h/2)
+    def __init__(self, con=np.ones(0), imgHeight=1):
+        #TODO description of default param
+        if con.shape[0] == 0:
+            x, y, w, h = [1, 1, 1, 1]
+            self.Area = 0
+        else:
+            x, y, w, h = cv2.boundingRect(con)
+            self.Area = cv2.contourArea(con)
 
-        self.Ratio=h/float(w)
-        self.Area=cv2.contourArea(con)
-        self.RectArea=self.Width * self.Height
+        self.X = x
+        self.Y = y
+        self.Width = w
+        self.Height = h
+        self.Center = (x+w/2, y+h/2)
+        self.Ratio = h/float(w)
+
+        self.RectArea = self.Width * self.Height
         self.PossibleLetter = self.CheckPossibility(imgHeight)
 
 
@@ -25,7 +31,8 @@ class Contour(object):
         if self.X <= Cont.X <= self.X + self.Width and self.Y <= Cont.Y <= self.Y + self.Height:
             left_corner = True
         
-        if self.X <= Cont.X + Cont.Width <= self.X + self.Width and self.Y <= Cont.Y + Cont.Height <= self.Y + self.Height:
+        if self.X <= Cont.X + Cont.Width <= self.X + self.Width and\
+                self.Y <= Cont.Y + Cont.Height <= self.Y + self.Height:
             right_corner = True
 
         if left_corner and right_corner:
@@ -36,7 +43,7 @@ class Contour(object):
     def CheckPossibility(self, imgH):
         if self.Ratio < 1.2:
            return False
-        elif self.Ratio > 3.5:
+        elif self.Ratio > 3.8:
            return False
         elif imgH/self.Height > 4:
            return False
@@ -48,6 +55,7 @@ class Contour(object):
            return False
         else:
             return True
+        #TODO: More criteria for filtering
 
 class PlateObject(object):
     """Store all details about detected plate object"""
@@ -63,6 +71,7 @@ class PlateObject(object):
         self.Centr = (int((box[0] + box[2])/2.0), int((box[1] + box[3])/2))
 
         self.PlatesDict = {}
+        #TODO: Store More Data (frame number, pos history, GPS?)
 
     def updateDict(self, PlateString):
         #Check length of detected string (polish license plate should be shorter than 8 chars)
@@ -75,10 +84,14 @@ class PlateObject(object):
         else: self.PlatesDict[PlateString] += 1
 
     def getPlateNumber(self):
+        #check if there are any plate numbers detections
         if len(self.PlatesDict) > 0:
             plateNumber = max(self.PlatesDict, key=self.PlatesDict.get)
         else:
             return None, 0
+        #filter out detection with less than 3 repetitions
+        if self.PlatesDict[plateNumber] < 3:
+            return "unknown", 0
         return plateNumber, self.PlatesDict[plateNumber]
 
     def newPosition(self, box):
