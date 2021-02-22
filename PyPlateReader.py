@@ -2,15 +2,13 @@ from calibration import Calibration
 from detection import Detection
 from fps import FPSTracker
 import cv2
-import numpy as np
 import glob
 import time
 
-test_path=glob.glob('.\\DataSet\\train\\*.jpg')
+test_path = glob.glob('.\\DataSet\\train\\*.jpg')
 fps_logger = FPSTracker("Frame_load", "Calibration", "Yolo_Detection", "Plate_reading", "Total")
 
-cal=Calibration()
-#cal.calibrateVideo()
+cal = Calibration()
 cal.loadCameraParam(cal.VideoParamPath)
 
 det = Detection(display=False)
@@ -35,7 +33,7 @@ if video:
 
         frameCount += 1
 
-        if frameCount%5 != 0:
+        if frameCount % 4 != 0:
             continue
 
         # if frameCount == 75:
@@ -47,7 +45,7 @@ if video:
         else:
             frame = undist
             fps_logger["Calibration"].start()
-            #frame = cal.undistort(undist)
+            # frame = cal.undistort(undist)
             frame = cal.cutout(undist)
             fps_logger["Calibration"].stop()
 
@@ -59,22 +57,22 @@ if video:
             det.findLetters(frame, boxes)
             fps_logger["Plate_reading"].stop()
 
-            frame = cv2.resize(frame, None, fx=0.4, fy=0.4)
-            cv2.imshow("frame", frame)
-            if cv2.waitKey(2) & 0xFF == ord('q'):
-                break
+            # frame = cv2.resize(frame, None, fx=0.4, fy=0.4)
+            # cv2.imshow("frame", frame)
+            # if cv2.waitKey(2) & 0xFF == ord('q'):
+            #     break
     
     cap.release()
 elif images and not video:
     for pic in test_path:
-        img=cv2.imread(pic,cv2.IMREAD_UNCHANGED)
+        img=cv2.imread(pic, cv2.IMREAD_UNCHANGED)
         img=cal.undistort(img)
 
         #result whole img with drawbox on plates, plates - cropped img of plate
         result, plates = det.detectYoloTensor(img)
  
         det.findLetters(plates)
-        frameCount += 1
+        frameCount += 12
         
         #if frameCount==50:
         #    break

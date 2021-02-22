@@ -80,8 +80,10 @@ class PlateObject(object):
         if len(PlateString) < 5: return
         
         d = self.PlatesDict.get(PlateString, False)
-        if not d: self.PlatesDict[PlateString] = 1
-        else: self.PlatesDict[PlateString] += 1
+        if not d:
+            self.PlatesDict[PlateString] = 1
+        else:
+            self.PlatesDict[PlateString] += 1
 
     def getPlateNumber(self):
         #check if there are any plate numbers detections

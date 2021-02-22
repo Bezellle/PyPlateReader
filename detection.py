@@ -41,8 +41,8 @@ class Detection:
         self.FLAG.framework = "tf"
         self.FLAG.display = display
 
-        self.OCR=CustomOCR()
-        self.Track = Tracker(maxMissing = 5, maxDistance = 225)
+        self.OCR = CustomOCR()
+        self.Track = Tracker(maxMissing=5, maxDistance=225)
 
     ###########image preprocessing: active treshold and erode(if specified)########
     @staticmethod
@@ -60,7 +60,7 @@ class Detection:
         img = cv2.GaussianBlur(img, (5, 5), 0)
 
         if img.shape[1] < 600:
-            img_tresh = cv2.adaptiveThreshold(img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 59, 4)
+            img_tresh = cv2.adaptiveThreshold(img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 55, 4)
             img_tresh = cv2.dilate(img_tresh, MORPH_KERNEL, iterations=1)
             img_tresh = cv2.erode(img_tresh, MORPH_KERNEL, iterations=2)
         else:
@@ -294,7 +294,7 @@ class Detection:
                         cv2.imshow("char",char)
                         cv2.waitKey(0)
                     
-                    cv2.imwrite('./DataSet/Chars/pack2/'+str(self.CharNumber)+'.jpg', char)
+                    cv2.imwrite('./DataSet/Chars/pack3/'+str(self.CharNumber)+'.jpg', char)
                     self.CharNumber += 1
                 except:
                     print("Unexpected Error\n")
@@ -363,7 +363,11 @@ class Detection:
         for id in range(len(self.PlatesObjDataset)):
             key, val = self.PlatesObjDataset[id].getPlateNumber()
             if key is not None:
-                self.DetectedPlates[key] = val
+                ret = self.DetectedPlates.get(key, False)
+                if not ret:
+                    self.DetectedPlates[key] = val
+                else:
+                    self.DetectedPlates[key] += val
 
     def saveResults(self):
         if len(self.DetectedPlates) == 0:
@@ -371,11 +375,17 @@ class Detection:
         if len(self.DetectedPlates) == 0:
             print("No Plates recorded")
             return
+        else:
+            print("Total Objects detected: ", len(self.PlatesObjDataset),
+                  "\nTotal Plates detected: ", len(self.DetectedPlates))
 
         with open("./log/testResult.txt", "w") as file:
             for plate, qty in self.DetectedPlates.items():
                 if qty > 0:
                     file.write(str(plate) + " " + str(qty) + "\n")
+
+            file.write("\n\nSummary:\n\tTotal Objects detected: " + str(len(self.PlatesObjDataset)) +
+                  "\n\tTotal Plates detected: " + len(self.DetectedPlates))
 
     def saveIMG(self, img):
         path = './DataSet/Plates/'

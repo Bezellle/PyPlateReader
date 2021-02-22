@@ -1,5 +1,6 @@
 import subprocess
 import struct
+import os
 
 
 def pad(n, base=4):
@@ -10,7 +11,7 @@ def pad(n, base=4):
     return i
 
 
-class MataData:
+class MetaData:
     def __init__(self):
         self.BinaryData = bytearray()
         self.MapType = {'c': ['c', 1],
@@ -23,6 +24,8 @@ class MataData:
                         'B': ['B', 1],
                         'f': ['f', 4],
                         'J': ['Q', 8]}
+
+        self.GPS = []
 
     def map_type(self, datatype):
         ctype = chr(datatype)
@@ -45,11 +48,45 @@ class MataData:
             values.append(value)
         return values
 
-    def load_bin(self):
-        i = 5 #TODO make loading data from binary file
+    def load_bin(self, file_name):
+        bin_path = file_name[:-3] + 'bin'
+        check = os.path.exists(bin_path)
+        if not check:
+            self.make_bin(file_name)
 
-    def make_bin(self, file_name):
-        p1 = subprocess.run('dir', shell=True, stdout=subprocess.PIPE, text=True)
-        dst = file_name[:-3] + 'bin' #TODO to confirm
-        result = subprocess.run(['ffmeg', '-i', file_name, dst])
-        #TODO finish creating binary file
+        try:
+            with open(bin_path, 'rb') as f:
+                self.BinaryData = f.read()
+        except:
+            print("Could not load binary file with metadata")
+
+    @staticmethod
+    def make_bin(file_name):
+        #CMD command: ffmpeg -y -i GPFR1846.MP4 -codec copy -map 0:3 -f rawvideo GPFR1846.bin
+
+        dst = file_name[:-3] + 'bin'
+        result = subprocess.run(['ffmpeg', '-y', '-i', file_name, '-codec', 'copy', '-map', '0:3', '-f', 'rawvideo',
+                                 dst], shell=True)
+
+    def load_data(self):
+        binary_format = '>4sBBH'
+        s = struct.Struct(binary_format)
+        offset = 0
+
+        while offset < len(self.BinaryData) - 8:
+            label, dataType, size, count = s.unpack_from(self.BinaryData, offset=offset)
+            length = pad(size*count)
+
+            if label == b'GPS5':
+                gps5 = self.read_value(dataType, size, count, offset)
+
+                for point in gps5:
+                    self.GPS.append(point)
+
+            offset += 8
+            if dataType != 0:
+                offset += length
+
+
+
+

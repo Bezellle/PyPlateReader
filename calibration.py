@@ -201,8 +201,8 @@ class Calibration(object):
 
     def cutout(self, img):
         img_h, img_w = img.shape[:2]
-        border_y = 100
-        border_x = 100
+        border_y = 300
+        border_x = 150
 
         cut_out = img[border_y:img_h - border_y, border_x:img_w - border_x]
         return cut_out
