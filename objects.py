@@ -41,13 +41,13 @@ class Contour(object):
             return False
 
     def CheckPossibility(self, imgH):
-        if self.Ratio < 1.2:
+        if self.Ratio < 1.3:
            return False
-        elif self.Ratio > 3.8:
+        elif self.Ratio > 3.9:
            return False
         elif imgH/self.Height > 4:
            return False
-        elif self.RectArea < 300:
+        elif self.RectArea < 500:
            return False
         elif self.X == 0:
            return False
@@ -76,8 +76,10 @@ class PlateObject(object):
     def updateDict(self, PlateString):
         #Check length of detected string (polish license plate should be shorter than 8 chars)
         #and if it wasn't detected yet add to Detected Plate dict
-        if len(PlateString) > 8: return
-        if len(PlateString) < 5: return
+        if len(PlateString) > 8:
+            return
+        if len(PlateString) < 5:
+            return
         
         d = self.PlatesDict.get(PlateString, False)
         if not d:

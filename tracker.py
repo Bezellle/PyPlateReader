@@ -4,10 +4,9 @@ import numpy as np
 from objects import PlateObject
 
 class Tracker(object):
-    """Euclidean tracker class to label each plate objects
-        For now no scope for objects that are missing in current frame"""
+    """Euclidean tracker class to label each plate objects"""
 
-    def __init__(self, maxMissing = 5, maxDistance = 50):
+    def __init__(self, maxMissing=5, maxDistance=50):
         #ID is individual number for each detected and tracked object
         self.NextObjectID = 0
         self.Objects = OrderedDict()
@@ -24,29 +23,30 @@ class Tracker(object):
         self.Missing[self.NextObjectID] = 0
         self.NextObjectID += 1
 
-    def outOfScope(self, objectId):
+    def delOutOfScope(self, objectId):
         #delete objects that left frame
         del self.Objects[objectId]
         del self.Missing[objectId]
 
     def update(self, rects):
         #check if there are no objects detected if True add to missing or 
-        #go out of tracker scope if number of missed frames is higher than thesh
+        #go out of tracker scope if number of missed frames is higher than thresh
 
         if len(rects) == 0:
             for objectID in list(self.Objects.keys()):
                 self.Missing[objectID] += 1
                 if self.Missing[objectID] > self.MaxMissing:
-                    self.outOfScope(objectID)
+                    self.delOutOfScope(objectID)
 
             # return early as there are no centroids or tracking info
             # to update
             return False, self.Objects
 
         #Initialize an array for Centeroids 
-        inputCentroids = np.zeros((len(rects), 2), dtype="int")
         objectIds = list(self.Objects.keys())
         objectCentroids = np.array([i[0] for i in list(self.Objects.values())])
+        inputCentroids = np.zeros((len(rects), 2), dtype="int")
+
 
         #calculate centroids of given rects
         for (i, (startX, startY, endX, endY)) in enumerate(rects):
@@ -85,16 +85,16 @@ class Tracker(object):
             unusedRows = set(range(0, D.shape[0])).difference(usedRows)
             unusedCols = set(range(0, D.shape[1])).difference(usedCols)
 
-            #If there is more rows than cols that meens there is less points on new frame
+            #If there is more rows than cols that means there is less points on new frame
             #Additional points have to go out of tracking scope
             
-            # loop over the unused row indexes to check if something is not asigned 
+            # loop over the unused row indexes to check if something is not assigned
             if len(unusedRows) > 0:
                 for row in unusedRows:
                     ID = objectIds[row]
                     self.Missing[ID] += 1
                     if self.Missing[ID] > self.MaxMissing:
-                        self.outOfScope(ID)
+                        self.delOutOfScope(ID)
                     else:
                         self.Objects[ID][1] = -1
 

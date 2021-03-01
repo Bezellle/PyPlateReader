@@ -44,14 +44,12 @@ class Detection:
         self.OCR = CustomOCR()
         self.Track = Tracker(maxMissing=5, maxDistance=225)
 
-    ###########image preprocessing: active treshold and erode(if specified)########
     @staticmethod
     def preprocess(img):
-        MORPH_KERNEL = np.ones((3,3),np.uint8)      #kernel for morph operations
+        MORPH_KERNEL = np.ones((3, 3), np.uint8)      #kernel for morph operations
         #img=self.rotate(src,-15)
 
         #TODO: Update preprocessing for bigger plate image
-        #TODO: Control size of processing image
         if len(img.shape) == 3:
             img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
             #print("Char image for recognition should be in grayscale! \n Size has been changed!")
@@ -72,8 +70,6 @@ class Detection:
         #img_tresh = cv2.erode(img_tresh, MORPH_KERNEL, iterations=2)
         #imgTresh = cv2.dilate(imgTresh, MORPH_KERNEL, iterations=1)
         return img_tresh
-
-#######################################################
 
     def setYoloTensor(self):
         #detect plate with tensorflow framework and GPU device
@@ -98,9 +94,6 @@ class Detection:
 
         end_time=time.time()-start_time
         print("Model loaded in: ", end_time)
-      
-
-#######################################################
 
     def detectYoloTensor(self, frame):
         if frame is None:
@@ -152,14 +145,12 @@ class Detection:
         #rects are coordinates of detected boxes
         return result, rects
 
-    #######################################################
-
     def cutBox(self, frame, predbox, save=False):
         ## Crop detected plate from orginal image ##
 
         frame_w, frame_h=frame.shape[:2]
         boxes, scores, classes, num_boxes=predbox
-        border = 10
+        border = 5
 
         rects = []
         for i in range(num_boxes[0]):
@@ -169,13 +160,17 @@ class Detection:
             coor[1] = int(coor[1])
             coor[3] = int(coor[3])
 
-            if coor[0] - border < 0 or coor[0] + border > frame_h: continue
-            if coor[2] - border < 0 or coor[2] + border > frame_h: continue
-            if coor[1] - border < 0 or coor[2] + border > frame_w: continue
-            if coor[2] - border < 0 or coor[2] + border > frame_w: continue
+            if coor[0] - border < 0 or coor[0] + border > frame_h:
+                continue
+            if coor[2] - border < 0 or coor[2] + border > frame_h:
+                continue
+            if coor[1] - border < 0 or coor[2] + border > frame_w:
+                continue
+            if coor[2] - border < 0 or coor[2] + border > frame_w:
+                continue
 
-            # Box structure: [Xstart, Ystart, Xend, Yend]
-            rects.append([int(coor[1])-border, int(coor[0])-border, int(coor[3])+border, int(coor[2])+border])
+            # Box structure: (Xstart, Ystart, Xend, Yend)
+            rects.append((int(coor[1])-border, int(coor[0])-border, int(coor[3])+border, int(coor[2])+border))
 
         # Saving plates image
         if save:
@@ -186,9 +181,7 @@ class Detection:
                 plate = frame[box[1]:box[3], box[0]:box[2]]
                 cv2.imwrite(path + str(self.FrameNumber) + '_' + str(i) + '.jpg', plate)
         
-        return rects     
-
-###########################################################################
+        return rects
 
     def findLetters(self, img=None, boxes=None):
         # plate examples for test
@@ -197,7 +190,9 @@ class Detection:
         error_num = 0
 
         ret, trackedIDs = self.Track.update(boxes)
-        if not ret: return
+        #ret = False when there are no objects for detection
+        if not ret:
+            return
 
         for id in list(trackedIDs.keys()):
             boxId = list(trackedIDs[id])[1]
@@ -209,6 +204,7 @@ class Detection:
             else:
                 self.PlatesObjDataset[id].newPosition(boxes[boxId])
 
+            #TODO: Change image exraction for boxes coord due to different method logic
             plt = img[self.PlatesObjDataset[id].Y: self.PlatesObjDataset[id].Y + self.PlatesObjDataset[id].H,
                   self.PlatesObjDataset[id].X: self.PlatesObjDataset[id].X + self.PlatesObjDataset[id].W]
 
@@ -251,7 +247,7 @@ class Detection:
             # to avoid error at lieIn func on 1st contours store empty con as previous
             ctr_prev = Contour()
             for con in sorted_contours:
-                img_height, img_width= plt.shape[:2]
+                img_height, img_width = plt.shape[:2]
                 ctr = Contour(con, img_height)
                 #minRect=cv2.minAreaRect(con)
 
@@ -260,11 +256,11 @@ class Detection:
                     temp = copy.deepcopy(plt)
                     temp = cv2.rectangle(temp, (ctr.X - 5, ctr.Y - 5), (ctr.X + ctr.Width + 5, ctr.Y + ctr.Height + 5),
                                          (125, 125, 125), 2)
-                    cv2.imshow("plate",temp)
+                    cv2.imshow("plate", temp)
                     cv2.waitKey(1)
 
                 #criteria for letter possibility:
-                if ctr.PossibleLetter == False:
+                if not ctr.PossibleLetter:
                     continue
 
                 #Check if contour is inside of previous contour
@@ -281,7 +277,8 @@ class Detection:
                 #Extract single char from plate image. 
                 char = plt[ctr.Y - 5:ctr.Y + ctr.Height + 5, ctr.X - 5:ctr.X + ctr.Width + 5]  #RECTANGULAR
                 
-                if char is None: continue
+                if char is None:
+                    continue
                 
                 #char=self.cropSubPix(plt,minRect)      #MIN AREA RECT
                 try:
@@ -291,7 +288,7 @@ class Detection:
                     
                     if self.FLAG.display:
                         print(charStr)
-                        cv2.imshow("char",char)
+                        cv2.imshow("char", char)
                         cv2.waitKey(0)
                     
                     cv2.imwrite('./DataSet/Chars/pack3/'+str(self.CharNumber)+'.jpg', char)
@@ -300,15 +297,16 @@ class Detection:
                     print("Unexpected Error\n")
                     error_num += 1
 
-                char=None
+                char = None
 
             print("Frame: ", self.FrameNumber, "Object nr: ", str(id), " - ", plate_string)
             if error_num > 0:
                 print(str(error_num))
             #if plate_string != '': self.set_DetectedPlate(plate_string)
-            if plate_string != '': self.PlatesObjDataset[id].updateDict(plate_string)
+            if plate_string != '':
+                self.PlatesObjDataset[id].updateDict(plate_string)
 
-    def rotate(self,img,angle,center=None,scale=1.0):
+    def rotate(self, img, angle, center=None, scale=1.0):
     
         # grab the dimensions of the image
         (h, w) = img.shape[:2]
@@ -385,7 +383,7 @@ class Detection:
                     file.write(str(plate) + " " + str(qty) + "\n")
 
             file.write("\n\nSummary:\n\tTotal Objects detected: " + str(len(self.PlatesObjDataset)) +
-                  "\n\tTotal Plates detected: " + len(self.DetectedPlates))
+                       "\n\tTotal Plates detected: " + str(len(self.DetectedPlates)))
 
     def saveIMG(self, img):
         path = './DataSet/Plates/'
@@ -395,7 +393,7 @@ class Detection:
                 cv2.imwrite(path+str(self.PlateNum)+'.jpg', img)
         except:
             self.EmptyFrame += 1
-            print("Empty Frame no:" + str(self.EmptyFrame ))
+            print("Empty Frame no:" + str(self.EmptyFrame))
 
     def blurryFFT(self, img, size = 30, thresh = 5):
         ##  Function that detects if image is blurred or not. Returns True if it is.
@@ -410,7 +408,7 @@ class Detection:
         fftShift = np.fft.fftshift(fft)
 
         # zero-out center of fft
-        fftShift[cY - size:cY + size, cX - size: cX +size] = 0
+        fftShift[cY - size:cY + size, cX - size: cX + size] = 0
         fftShift = np.fft.ifftshift(fftShift)
         recon = np.fft.ifft2(fftShift)
 

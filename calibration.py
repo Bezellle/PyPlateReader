@@ -74,7 +74,7 @@ class Calibration(object):
 #########End of calibrate func###################################
 
     def calibrateVideo(self):
-        CHECKERBOARD = (6,9)
+        CHECKERBOARD = (6, 9)
         subpix_criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.1)
         calibration_flags = cv2.fisheye.CALIB_RECOMPUTE_EXTRINSIC + cv2.fisheye.CALIB_CHECK_COND + cv2.fisheye.CALIB_FIX_SKEW
         objp = np.zeros((1, CHECKERBOARD[0] * CHECKERBOARD[1], 3), np.float32)
@@ -201,7 +201,7 @@ class Calibration(object):
 
     def cutout(self, img):
         img_h, img_w = img.shape[:2]
-        border_y = 300
+        border_y = 500
         border_x = 150
 
         cut_out = img[border_y:img_h - border_y, border_x:img_w - border_x]

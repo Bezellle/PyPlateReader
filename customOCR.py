@@ -5,7 +5,6 @@ import copy
 from cv2 import resize
 
 
-#TODO: Check letters: 0, b, u, i, e
 class CustomOCR:
     def __init__(self):
         model = tf.keras.models.load_model('.\\model\\CustomOCR')
