@@ -12,7 +12,7 @@ def pad(n, base=4):
 
 
 class MetaData:
-    def __init__(self, file_path='GPFR1846.MP4', total_frames=0, FPS=0.0):
+    def __init__(self, file_path='GPFR1846.MP4', total_frames=0):
         self.BinaryData = bytearray()
         self.MapType = {'c': ['c', 1],
                         'L': ['L', 4],
@@ -77,7 +77,7 @@ class MetaData:
         result = subprocess.run(['ffmpeg', '-y', '-i', file_name, '-codec', 'copy', '-map', '0:3', '-f', 'rawvideo',
                                  dst], shell=True)
 
-    def loadData(self):
+    def loadGPSData(self):
         binary_format = '>4sBBH'
         s = struct.Struct(binary_format)
         offset = 0

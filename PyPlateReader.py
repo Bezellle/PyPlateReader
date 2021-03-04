@@ -1,21 +1,21 @@
-from calibration import Calibration 
-from detection import Detection
-from fps import FPSTracker
-from metadataExt import MetaData
+from source.calibration import Calibration
+from source.detection import Detection
+from source.fps import FPSTracker
+from source.metadataExt import MetaData
+from source.objects import ObjectsSet
 import cv2
 import glob
-import time
 
 img_path = glob.glob('.\\DataSet\\train\\*.jpg')
 test_path = glob.glob('.\\test\\*.MP4')
-fps_logger = FPSTracker("Frame_load", "Calibration", "Yolo_Detection", "Plate_reading", "Total")
+fps_logger = FPSTracker("Frame_load", "Calibration", "Yolo_Detection", "Plate_reading", "Dataset_update", "Total")
 
 cal = Calibration()
 cal.loadCameraParam(cal.VideoParamPath)
 
-det = Detection(display=True)
+det = Detection(display=False)
 det.setYoloTensor()
-
+objDataSet = ObjectsSet()
 
 emptyFrames = 0
 
@@ -26,12 +26,12 @@ fps_logger["Total"].start()
 
 if video:
     for path in test_path:
-        next_frame = 0
         cap = cv2.VideoCapture(path)
         meta = MetaData()
         # meta.load_data("GPFR3074.MP4")
         total_frames = cap.get(cv2.CAP_PROP_FRAME_COUNT)
         print(total_frames)
+        next_frame = total_frames - 50
 
         cap.set(cv2.CAP_PROP_POS_FRAMES, next_frame)
         while(cap.isOpened()):
@@ -42,12 +42,15 @@ if video:
             #Skip empty frames end break the loop at the end of video
             if next_frame < int(total_frames) and not ret:
                 emptyFrames += 1
+                next_frame += 3
+                cap.set(cv2.CAP_PROP_POS_FRAMES, next_frame)
                 print("Number of empty frames detected: ", str(emptyFrames))
                 continue
             elif next_frame >= total_frames and not ret:
                 print("Number of empty frames detected: ", str(emptyFrames))
                 break
             else:
+                #Start detection
                 frame = undist
                 fps_logger["Calibration"].start()
                 #frame = cal.undistort(undist)
@@ -59,8 +62,12 @@ if video:
                 fps_logger["Yolo_Detection"].stop()
 
                 fps_logger["Plate_reading"].start()
-                det.findLetters(frame, boxes)
+                result_list = det.findLetters(frame, boxes)
                 fps_logger["Plate_reading"].stop()
+
+                fps_logger["Dataset_update"].start()
+                objDataSet.updateObjectDict(result_list, next_frame)
+                fps_logger["Dataset_update"].stop()
 
                 frame = cv2.resize(frame, None, fx=0.4, fy=0.4)
                 cv2.imshow("frame", frame)
@@ -85,7 +92,7 @@ else:
     print("Wrong Test Params")
 
 fps_logger["Total"].stop()
-det.saveResults()
+objDataSet.saveResults()
 
 fps_logger.saveLog()
 if video:

@@ -1,7 +1,6 @@
 from scipy.spatial import distance as dist
 from collections import OrderedDict
 import numpy as np
-from objects import PlateObject
 
 class Tracker(object):
     """Euclidean tracker class to label each plate objects"""
