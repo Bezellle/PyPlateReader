@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 from source.metadataExt import MetaData
+from math import fabs
 
 
 class Contour(object):
@@ -42,6 +43,7 @@ class Contour(object):
             return False
 
     def CheckPossibility(self, imgH):
+        #Check if all criteria for letter possibility are met
         if self.Ratio < 1.3:
            return False
         elif self.Ratio > 3.9:
@@ -62,6 +64,7 @@ class Contour(object):
 
 class PlateObject(object):
     """Store all details about detected plate object"""
+    ImgCenter = 1200
 
     def __init__(self, box, objectID, plate_string=''):
         self.ObjectID = objectID
@@ -73,36 +76,39 @@ class PlateObject(object):
 
         self.Centr = (int((box[0] + box[2])/2.0), int((box[1] + box[3])/2))
 
-        self.PlatesDict = {}
+        self.Localization = []       # All camera localization history
+        self.PlatesDict = {}         # All detected and valid plate numbers
+        self.ImgPositions = []       # All positions of object on the img (Centr)
         if plate_string != '':
             self.PlatesDict[plate_string] = 1
         #TODO: Store More Data (frame number, pos history, GPS?)
 
     def updateDict(self, plate_string):
-        #Check length of detected string (polish license plate should be shorter than 8 chars)
-        #and if it wasn't detected yet add to Detected Plate dict
-        if len(plate_string) > 8:
-            return
-        if len(plate_string) < 5:
-            return
-        
+        #Check if Plate number was detected, if not add new one
+
         d = self.PlatesDict.get(plate_string, False)
         if not d:
             self.PlatesDict[plate_string] = 1
         else:
             self.PlatesDict[plate_string] += 1
 
+    def updateLocation(self, location):
+        #store GPS data of camera position to calculate object position next. Limit to 6 positions
+
+        if len(self.Localization) <= 6:
+            self.Localization.append(location)
+
     def getPlateNumber(self):
         #check if there are any plate numbers detections
         if len(self.PlatesDict) > 0:
-            plateNumber = max(self.PlatesDict, key=self.PlatesDict.get)
+            plate_number = max(self.PlatesDict, key=self.PlatesDict.get)
         else:
             return None, 0
 
         #filter out detection with less than 3 repetitions
-        if self.PlatesDict[plateNumber] < 3:
+        if self.PlatesDict[plate_number] < 3:
             return "unknown", 0
-        return plateNumber, self.PlatesDict[plateNumber]
+        return plate_number, self.PlatesDict[plate_number]
 
     def newPosition(self, box):
         self.X = box[0]
@@ -111,6 +117,7 @@ class PlateObject(object):
         self.H = box[3] - box[1]
 
         self.Centr = (int((box[0] + box[2]) / 2.0), int((box[1] + box[3]) / 2))
+        self.ImgPositions.append(self.Centr)
 
 ###################################################################################
 
@@ -119,28 +126,35 @@ class ObjectsSet(object):
     MIN_PLATE_LENGTH = 4
     MAX_PLATE_LENGTH = 8
 
-    def __init__(self):
+    def __init__(self, frame_size=(2704, 2624)):
         self.ObjectsDict = {}
         self.ResultDict = {}
+        PlateObject.ImgCenter = frame_size[0]/2
 
         self.MetaData = MetaData()
 
     def updateObjectDict(self, det_results, frame_number=0):
+        if len(det_results) == 0:
+            return
+
+        camera_location, direction = self.MetaData.getCameraLocation(frame_number)
+
         #detection results has structure: [(id, box, plate_string), (...)]
         for single_det in det_results:
-            #first check if plate_string is valid according to polish law
+            #Check if plate_string is valid according to polish law
             if len(single_det[2]) < self.MIN_PLATE_LENGTH:
                 break
             if len(single_det[2]) > self.MAX_PLATE_LENGTH:
                 break
 
-            #check if objectID is in the set. if is update object with new detection, otherwise create new object
+            #check if objectID is in the set. if it is update object with new detection, otherwise create new object
             check = self.ObjectsDict.get(single_det[0], False)
             if not check:
                 self.ObjectsDict[single_det[0]] = PlateObject(single_det[1], single_det[0], single_det[2])
             else:
                 self.ObjectsDict[single_det[0]].updateDict(single_det[2])
                 self.ObjectsDict[single_det[0]].newPosition(single_det[1])
+                self.ObjectsDict[single_det[0]].updateLocation(camera_location)
 
     def setResultDict(self):
         #Create dict of most detected plate numbers for all detected objects. This is the final result of detection
@@ -174,8 +188,19 @@ class ObjectsSet(object):
                 file.write(msg.format(len(self.ObjectsDict), len(self.ResultDict)))
 
     # TODO: Add GPS
-    def loadMetaData(self, file_path, total_frames):
-        self.MetaData.loadBin(file_path)
-        self.MetaData.TotalFrames = total_frames
+    def loadMetaData(self, file_paths):
+        #Only video from front camera store gps metadata
+        for file in file_paths:
+            txt_split = file.split("\\")
+            if txt_split[-1][2:4] == 'FR':
+                self.MetaData.loadGPSData(file)
+
+    def setFramesNumber(self, total_frames):
+        #update
+        if total_frames > 0:
+            self.MetaData.TotalFrames = total_frames
+        else:
+            raise Exception('Wrong number of frames! Frame numbers have to be greater than 0')
+
 
 

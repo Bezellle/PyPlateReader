@@ -47,7 +47,6 @@ class Detection:
         MORPH_KERNEL = np.ones((3, 3), np.uint8)      #kernel for morph operations
         #img=self.rotate(src,-15)
 
-        #TODO: Update preprocessing for bigger plate image
         if len(img.shape) == 3:
             img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
             #print("Char image for recognition should be in grayscale! \n Size has been changed!")
@@ -55,6 +54,7 @@ class Detection:
 
         img = cv2.GaussianBlur(img, (5, 5), 0)
 
+        #apply OTSU for bigger plates
         if img.shape[1] < 600:
             img_thresh = cv2.adaptiveThreshold(img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 55, 4)
             img_thresh = cv2.dilate(img_thresh, MORPH_KERNEL, iterations=1)
@@ -90,12 +90,12 @@ class Detection:
         if frame is None:
             print("No frame loaded")
         else:
-            frameRGB = cv2.cvtColor(frame,cv2.COLOR_BGR2RGB)
+            frameRGB = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             image = Image.fromarray(frameRGB)
 
         self.FrameNumber += 1
 
-        image_data = cv2.resize(frameRGB,(self.FLAG.size, self.FLAG.size))
+        image_data = cv2.resize(frameRGB, (self.FLAG.size, self.FLAG.size))
         image_data = image_data/255
         image_data = image_data[np.newaxis, ...].astype(np.float32)
 
@@ -132,8 +132,8 @@ class Detection:
     def cutBox(self, frame, predbox, save=False):
         ## Crop detected plate from orginal image ##
 
-        frame_w, frame_h=frame.shape[:2]
-        boxes, scores, classes, num_boxes=predbox
+        frame_w, frame_h = frame.shape[:2]
+        boxes, scores, classes, num_boxes = predbox
         border = 5
 
         rects = []
@@ -185,7 +185,6 @@ class Detection:
             if boxId == -1:
                 continue
 
-            #TODO: Change image exraction for boxes coord due to different method logic
             plt = img[boxes[boxId][1]: boxes[boxId][3], boxes[boxId][0]: boxes[boxId][2]]
 
             try:  

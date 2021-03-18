@@ -1,21 +1,23 @@
 from source.calibration import Calibration
 from source.detection import Detection
 from source.fps import FPSTracker
-from source.metadataExt import MetaData
 from source.objects import ObjectsSet
 import cv2
 import glob
+import time
 
 img_path = glob.glob('.\\DataSet\\train\\*.jpg')
 test_path = glob.glob('.\\test\\*.MP4')
 fps_logger = FPSTracker("Frame_load", "Calibration", "Yolo_Detection", "Plate_reading", "Dataset_update", "Total")
 
-cal = Calibration()
+cal = Calibration(method='cutout')
 cal.loadCameraParam(cal.VideoParamPath)
+cali_framesize = cal.getImgSize()
 
-det = Detection(display=False)
+det = Detection(display=True)
 det.setYoloTensor()
 objDataSet = ObjectsSet()
+objDataSet.loadMetaData(test_path)
 
 emptyFrames = 0
 
@@ -27,11 +29,11 @@ fps_logger["Total"].start()
 if video:
     for path in test_path:
         cap = cv2.VideoCapture(path)
-        meta = MetaData()
-        # meta.load_data("GPFR3074.MP4")
+
         total_frames = cap.get(cv2.CAP_PROP_FRAME_COUNT)
-        print(total_frames)
-        next_frame = total_frames - 50
+        objDataSet.setFramesNumber(total_frames)
+
+        next_frame = 500
 
         cap.set(cv2.CAP_PROP_POS_FRAMES, next_frame)
         while(cap.isOpened()):
@@ -53,8 +55,10 @@ if video:
                 #Start detection
                 frame = undist
                 fps_logger["Calibration"].start()
-                #frame = cal.undistort(undist)
-                frame = cal.cutout(undist)
+                frame = cal.calibrateIMG(undist)
+                # frame = cal.undistort(undist)
+                # frame, frame_size = cal.cutout(undist)
+                time.sleep(0.0001)
                 fps_logger["Calibration"].stop()
 
                 fps_logger["Yolo_Detection"].start()
@@ -65,9 +69,14 @@ if video:
                 result_list = det.findLetters(frame, boxes)
                 fps_logger["Plate_reading"].stop()
 
+                start = time.time()
                 fps_logger["Dataset_update"].start()
                 objDataSet.updateObjectDict(result_list, next_frame)
+                time.sleep(0.0001)
+                end = time.time() - start
                 fps_logger["Dataset_update"].stop()
+
+                print(end)
 
                 frame = cv2.resize(frame, None, fx=0.4, fy=0.4)
                 cv2.imshow("frame", frame)

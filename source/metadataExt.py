@@ -1,6 +1,7 @@
 import subprocess
 import struct
 import os
+from math import sqrt
 
 
 def pad(n, base=4):
@@ -77,7 +78,10 @@ class MetaData:
         result = subprocess.run(['ffmpeg', '-y', '-i', file_name, '-codec', 'copy', '-map', '0:3', '-f', 'rawvideo',
                                  dst], shell=True)
 
-    def loadGPSData(self):
+    def loadGPSData(self, path):
+        if len(self.BinaryData) == 0:
+            self.loadBin(path)
+
         binary_format = '>4sBBH'
         s = struct.Struct(binary_format)
         offset = 0
@@ -100,9 +104,14 @@ class MetaData:
         index = round((frame_number * len(self.GPS)) / self.TotalFrames)
 
         if index >= len(self.GPS):
-            index = len(self.GPS) - 1
+            index = len(self.GPS) - 2
+        x_len = self.GPS[index+1][0] - self.GPS[index][0]
+        y_len = self.GPS[index+1][1] - self.GPS[index][1]
 
-        return self.GPS[index]
+        dist = sqrt(x_len ** 2 + y_len ** 2)
+        sin_dir = y_len/dist
+
+        return self.GPS[index], sin_dir
 
 
 
