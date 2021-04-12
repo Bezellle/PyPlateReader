@@ -2,6 +2,7 @@ import subprocess
 import struct
 import os
 from math import sqrt
+from pathlib import Path
 
 
 def pad(n, base=4):
@@ -13,25 +14,27 @@ def pad(n, base=4):
 
 
 class MetaData:
-    def __init__(self, file_path='GPFR1846.MP4', total_frames=0):
-        self.BinaryData = bytearray()
-        self.MapType = {'c': ['c', 1],
-                        'L': ['L', 4],
-                        's': ['h', 2],
-                        'S': ['H', 2],
-                        'f': ['f', 4],
-                        'U': ['c', 1],
-                        'l': ['l', 4],
-                        'B': ['B', 1],
-                        'f': ['f', 4],
-                        'J': ['Q', 8]}
+    MapType = {'c': ['c', 1],
+               'L': ['L', 4],
+               's': ['h', 2],
+               'S': ['H', 2],
+               'f': ['f', 4],
+               'U': ['c', 1],
+               'l': ['l', 4],
+               'B': ['B', 1],
+               'f': ['f', 4],
+               'J': ['Q', 8]}
 
+    def __init__(self, file_path=None, total_frames=0):
+        self.BinaryData = bytearray()
         self.GPS = []
         self.TotalFrames = total_frames
-        if not os.path.exists(file_path):
-            raise OSError('file not found. Metadata can not be extracted')
-        else:
-            self.Path = file_path
+
+        if file_path is not None:
+            if not os.path.exists(file_path):
+                raise OSError('File not found. Metadata can not be extracted')
+            else:
+                self.Path = file_path
 
     def mapType(self, datatype):
         ctype = chr(datatype)
@@ -55,7 +58,8 @@ class MetaData:
         return values
 
     def loadBin(self, file_name):
-        bin_path = file_name[:-3] + 'bin'
+        #bin_path = file_name[:-3] + 'bin'
+        bin_path = file_name.with_suffix('.bin')
 
         if not os.path.exists(bin_path):
             if os.path.exists(file_name):
@@ -74,9 +78,13 @@ class MetaData:
     def makeBin(file_name):
         #CMD command: ffmpeg -y -i GPFR1846.MP4 -codec copy -map 0:3 -f rawvideo GPFR1846.bin
 
-        dst = file_name[:-3] + 'bin'
-        result = subprocess.run(['ffmpeg', '-y', '-i', file_name, '-codec', 'copy', '-map', '0:3', '-f', 'rawvideo',
-                                 dst], shell=True)
+        #dst = file_name[:-3] + 'bin'
+        dst = file_name.with_suffix('.bin')
+        cmd = 'ffmpeg -y -i ./' + str(file_name) + ' -codec copy -map 0:3 -f rawvideo ./' + str(dst)
+        #result = subprocess.run(['ffmpeg', '-y', '-i', str(file_name), '-codec', 'copy', '-map', '0:3', '-f', 'rawvideo',
+        #                         str(dst)], shell=True, capture_output=True)
+
+        result = subprocess.run(cmd, shell=True, check=True)
 
     def loadGPSData(self, path):
         if len(self.BinaryData) == 0:
