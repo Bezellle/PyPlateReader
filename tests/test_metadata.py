@@ -12,8 +12,8 @@ class TestMetaData(unittest.TestCase):
         pass
 
     def test_makeBin(self):
-        video_path = Path('video/GPFR3074.MP4')
-        bin_path = Path('video/GPFR3074.bin')
+        video_path = Path('../video/GPFR3073.MP4')
+        bin_path = Path('../video/GPFR3073.bin')
         self.Metadata.makeBin(video_path)
 
         self.assertTrue(bin_path.exists())

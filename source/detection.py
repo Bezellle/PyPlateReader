@@ -17,34 +17,38 @@ from source.customOCR import CustomOCR
 
 
 class Detection:
-    """description of class"""
+    """Detection class is responsible for all detection at recorded frame. Starts from finding license plate on image
+    and image processing to final result - license plate numbers"""
+
+    MORPH_KERNEL = np.ones((3, 3), np.uint8)
+
     def __init__(self, display=False):
-        self.classes = ["plate"]
+        # Class constructor initialize Flags, params and 2 other classes instances (OCR and Tracker)
         physical_devices = tf.config.experimental.list_physical_devices('GPU')
-        print(physical_devices)
         if len(physical_devices) > 0:
             tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
+        self.classes = ["plate"]
         self.CharNumber = 0
         self.PlateNum = 0
         self.EmptyFrame = 0
         self.FrameNumber = 0
 
+        # TODO: Config file for paths
         self.FLAG = edict() 
         self.FLAG.size = 416
         self.FLAG.tiny = False
         self.FLAG.model = "yolov4"
         #self.FLAG.weights = './model/custom-416'
-        self.FLAG.weights = './model/modelYolov4'
+        self.FLAG.weights = './model/yolo_model'
         self.FLAG.framework = "tf"
         self.FLAG.display = display
 
         self.OCR = CustomOCR()
         self.Track = Tracker(maxMissing=5, maxDistance=225)
 
-    @staticmethod
-    def preprocess(img):
-        MORPH_KERNEL = np.ones((3, 3), np.uint8)      #kernel for morph operations
+    def preprocess(self, img):
+        # preprocess method perform all image preprocessing - change to grayscale, thresholding, gaussianblur etc.
         #img=self.rotate(src,-15)
 
         if len(img.shape) == 3:
@@ -57,20 +61,20 @@ class Detection:
         #apply OTSU for bigger plates
         if img.shape[1] < 600:
             img_thresh = cv2.adaptiveThreshold(img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 55, 4)
-            img_thresh = cv2.dilate(img_thresh, MORPH_KERNEL, iterations=1)
-            img_thresh = cv2.erode(img_thresh, MORPH_KERNEL, iterations=2)
+            img_thresh = cv2.dilate(img_thresh, self.MORPH_KERNEL, iterations=1)
+            img_thresh = cv2.erode(img_thresh, self.MORPH_KERNEL, iterations=2)
         else:
             img_thresh = cv2.threshold(img, 128, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)[1]
             img_thresh = cv2.bitwise_not(img_thresh)
-            img_thresh = cv2.dilate(img_thresh, MORPH_KERNEL, iterations=1)
+            img_thresh = cv2.dilate(img_thresh, self.MORPH_KERNEL, iterations=1)
 
-        img_thresh = cv2.dilate(img_thresh, MORPH_KERNEL, iterations=1)
+        img_thresh = cv2.dilate(img_thresh, self.MORPH_KERNEL, iterations=1)
         #img_thresh = cv2.erode(img_thresh, MORPH_KERNEL, iterations=2)
         #img_thresh = cv2.dilate(imgThresh, MORPH_KERNEL, iterations=1)
         return img_thresh
 
     def setYoloTensor(self):
-        #detect plate with tensorflow framework and GPU device
+        # Loads Yolo model and config. Is called once at the begging of the detection
 
         config = ConfigProto()
         config.gpu_options.allow_growth = True
@@ -87,6 +91,9 @@ class Detection:
         print("Model loaded in: ", end_time)
 
     def detectYoloTensor(self, frame):
+        # License plate detection with YOLO network model. Take whole image as an input
+        # and return boxes coordinates with license plates
+
         if frame is None:
             print("No frame loaded")
         else:
@@ -100,12 +107,12 @@ class Detection:
         image_data = image_data[np.newaxis, ...].astype(np.float32)
 
         batch_data = tf.constant(image_data)
-        pred_bbox = self.infer(batch_data)        #all boxes found by net
+        pred_bbox = self.infer(batch_data)        # all boxes found by net
         for key, value in pred_bbox.items():
             boxes = value[:, :, 0:4]
             pred_conf = value[:, :, 4:]
 
-        #combined boxes based on IOU
+        # combined boxes based on IOU
         boxes, scores, classes, valid_detections = tf.image.combined_non_max_suppression(
             boxes=tf.reshape(boxes, (tf.shape(boxes)[0], -1, 1, 4)),
             scores=tf.reshape(
@@ -116,7 +123,7 @@ class Detection:
             score_threshold=0.25
             )
 
-        #convert tensors to numpy arrays
+        # convert tensors to numpy arrays
         pred_bbox = [boxes.numpy(), scores.numpy(), classes.numpy(), valid_detections.numpy()]  
         
         image = utils.draw_bbox(frame, pred_bbox)
@@ -125,12 +132,12 @@ class Detection:
 
         rects = self.cutBox(frame, pred_bbox, False)
         
-        #result is a frame with boxes
-        #rects are coordinates of detected boxes
+        # result is a frame with boxes
+        # rects are coordinates of detected boxes
         return result, rects
 
     def cutBox(self, frame, predbox, save=False):
-        ## Crop detected plate from orginal image ##
+        ## Crop detected plate from orginal image. Return boxes coordinates of area with license plate ##
 
         frame_w, frame_h = frame.shape[:2]
         boxes, scores, classes, num_boxes = predbox
@@ -156,7 +163,7 @@ class Detection:
             # Box structure: (Xstart, Ystart, Xend, Yend)
             rects.append((int(coor[1])-border, int(coor[0])-border, int(coor[3])+border, int(coor[2])+border))
 
-        # Saving plates image
+        # Saving plates image, if specified
         if save:
             path = './DataSet/Plates/'
             plates = []
@@ -168,15 +175,21 @@ class Detection:
         return rects
 
     def findLetters(self, img=None, boxes=None):
-        # plate examples for test
+        # Method responsible for extracting license plate numbers from image after yolo detection.
+        # Uses Tracker and OCR
+
+        # plate examples for test (will be replaced with unittest)
         #if img == None and boxes == None: plates=glob.glob('./DataSet/Plates/*.jpg')
 
-        error_num = 0
-        #result_list is result of the method. it stores tuples of (is, box, plate_string)
+        # result_list is result of the method. it stores tuples of (id, box, plate_string)
         result_list = []
+        error_num = 0
+        msg = "Frame: {} Object nr: {} - {}"
 
         ret, trackedIDs = self.Track.update(boxes)
-        #ret = False when there are no objects for detection
+        # trackedIDs has info about each detected object ID and object number in input box
+        # if boxId id -1 that means this plate object is missing on this frame and detection must be skipped
+        # ret is False when there are no objects for detection. In this case mathod return empty list
         if not ret:
             return result_list
 
@@ -185,6 +198,7 @@ class Detection:
             if boxId == -1:
                 continue
 
+            # crop img according to input boxes
             plt = img[boxes[boxId][1]: boxes[boxId][3], boxes[boxId][0]: boxes[boxId][2]]
 
             try:  
@@ -193,7 +207,7 @@ class Detection:
                 print("Error occured during findLetters func\nEmpty frame cannot be resized!\n ")
                 continue
 
-            #Check if image is blurry. If True - skip
+            # Check if image is blurry. If True - skip
             mean, blurry = self.blurryFFT(plt, size=35, thresh=-15)
             if blurry:
                 if self.FLAG.display:
@@ -211,15 +225,15 @@ class Detection:
             # apply: threshold, gaussian blur and morph
             plt = self.preprocess(plt)
 
-            #TODO: Change contours to blobs!
-            #find contours on image: with canny edges first
+            # TODO: Change contours to blobs!
+            # find contours on image: with canny edges first
             edges = cv2.Canny(plt, 100, 200)
             try:
                 contours, hierarchy = cv2.findContours(edges, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
             except:
                 ret, contours, hierarchy = cv2.findContours(edges, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
-            #sort contours (from left to right) 
+            # sort contours (from left to right)
             sorted_contours = sorted(contours, key=lambda ctr: cv2.boundingRect(ctr)[0])    
 
             plate_string = ""
@@ -229,45 +243,39 @@ class Detection:
             for con in sorted_contours:
                 img_height, img_width = plt.shape[:2]
                 ctr = Contour(con, img_height)
-                #minRect=cv2.minAreaRect(con)
 
                 if self.FLAG.display:
-                    #temp is object just for tests
+                    # temp is object just for tests
                     temp = copy.deepcopy(plt)
                     temp = cv2.rectangle(temp, (ctr.X - 5, ctr.Y - 5), (ctr.X + ctr.Width + 5, ctr.Y + ctr.Height + 5),
                                          (125, 125, 125), 2)
                     cv2.imshow("plate", temp)
                     cv2.waitKey(1)
 
-                #criteria for letter possibility:
+                # criteria for letter possibility:
                 if not ctr.PossibleLetter:
                     continue
 
-                #Check if contour is inside of previous contour
+                # Check if contour is inside of previous contour
                 if ctr_prev.lieIn(ctr):
                     ctr.PossibleLetter = False
                     continue        
 
                 ctr_prev = Contour(con, img_height)
-                
-                #rotated rect
-                #box = cv2.boxPoints(minRect)
-                #box = np.intp(box)
 
-                #Extract single char from plate image. 
-                char = plt[ctr.Y - 5:ctr.Y + ctr.Height + 5, ctr.X - 5:ctr.X + ctr.Width + 5]  #RECTANGULAR
+                # Extract single char from plate image.
+                char = plt[ctr.Y - 5:ctr.Y + ctr.Height + 5, ctr.X - 5:ctr.X + ctr.Width + 5]
                 
                 if char is None:
                     continue
-                
-                #char=self.cropSubPix(plt,minRect)      #MIN AREA RECT
+
                 try:
-                    charStr = self.OCR.prediction(char)
+                    char_str = self.OCR.prediction(char)
                     
-                    plate_string += charStr  
+                    plate_string += char_str
                     
                     if self.FLAG.display:
-                        print(charStr)
+                        print(char_str)
                         cv2.imshow("char", char)
                         cv2.waitKey(0)
                     
@@ -279,16 +287,18 @@ class Detection:
 
                 char = None
 
-            print("Frame: ", self.FrameNumber, "Object nr: ", str(id), " - ", plate_string)
+            #print("Frame: ", self.FrameNumber, "Object nr: ", str(id), " - ", plate_string)
+
+            print(msg.format(self.FrameNumber, id, plate_string))
             if error_num > 0:
-                print(str(error_num))
+                print("Error num: " + str(error_num))
 
             result_list.append((id, boxes[boxId], plate_string))
 
         return result_list
 
-    def rotate(self, img, angle, center=None, scale=1.0):
-    
+    @staticmethod
+    def rotate(img, angle, center=None, scale=1.0):
         # grab the dimensions of the image
         (h, w) = img.shape[:2]
 
@@ -297,8 +307,8 @@ class Detection:
             center = (w // 2, h // 2)
 
         # perform the rotation
-        M = cv2.getRotationMatrix2D(center, angle, scale)
-        rotated = cv2.warpAffine(img, M, (w, h))
+        matx = cv2.getRotationMatrix2D(center, angle, scale)
+        rotated = cv2.warpAffine(img, matx, (w, h))
 
         # return the rotated image
         return rotated
@@ -348,8 +358,8 @@ class Detection:
             self.EmptyFrame += 1
             print("Empty Frame no:" + str(self.EmptyFrame))
 
-    def blurryFFT(self, img, size = 30, thresh = 5):
-        ##  Function that detects if image is blurred or not. Returns True if it is.
+    def blurryFFT(self, img, size=30, thresh=5):
+        #  Function that detects if image is blurred or not. Returns True if it is.
         if len(img.shape) > 2:
             img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         

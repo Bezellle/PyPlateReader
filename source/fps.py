@@ -9,11 +9,11 @@ class FPS(object):
         self.TotalFrames = 0
         self.Name = name
 
-    def start(self):
+    def start(self) -> None:
         self.TotalFrames += 1
         self.StartTime = time.time()
 
-    def stop(self, print_FPS=False):
+    def stop(self, print_FPS=False) -> None:
         self.FrameTime = time.time() - self.StartTime
         self.TotalTime += self.FrameTime
         if self.FrameTime != 0:

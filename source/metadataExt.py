@@ -80,11 +80,12 @@ class MetaData:
 
         #dst = file_name[:-3] + 'bin'
         dst = file_name.with_suffix('.bin')
-        cmd = 'ffmpeg -y -i ./' + str(file_name) + ' -codec copy -map 0:3 -f rawvideo ./' + str(dst)
+        #cmd = 'ffmpeg -y -i ./' + str(file_name) + ' -codec copy -map 0:3 -f rawvideo ./' + str(dst)
+        cmd = 'ffmpeg -y -i ./{} -codec copy -map 0:3 -f rawvideo ./{}'
         #result = subprocess.run(['ffmpeg', '-y', '-i', str(file_name), '-codec', 'copy', '-map', '0:3', '-f', 'rawvideo',
         #                         str(dst)], shell=True, capture_output=True)
 
-        result = subprocess.run(cmd, shell=True, check=True)
+        result = subprocess.run(cmd.format(str(file_name), str(dst)), shell=True, check=True)
 
     def loadGPSData(self, path):
         if len(self.BinaryData) == 0:

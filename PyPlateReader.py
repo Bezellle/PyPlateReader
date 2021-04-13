@@ -5,9 +5,12 @@ from source.objects import ObjectsSet
 import cv2
 import glob
 import time
+from pathlib import Path
 
 img_path = glob.glob('.\\DataSet\\train\\*.jpg')
-test_path = glob.glob('.\\test\\*.MP4')
+#test_path = glob.glob('.\\video\\*.MP4')
+#UBUNTU TEST PATH
+test_path = glob.glob('./video/*.MP4')
 fps_logger = FPSTracker("Frame_load", "Calibration", "Yolo_Detection", "Plate_reading", "Dataset_update", "Total")
 
 cal = Calibration(method='cutout')
@@ -16,8 +19,8 @@ cali_framesize = cal.getImgSize()
 
 det = Detection(display=True)
 det.setYoloTensor()
-objDataSet = ObjectsSet()
-objDataSet.loadMetaData(test_path)
+objDataSet = ObjectsSet(test_path)
+#objDataSet.loadMetaData(test_path)
 
 emptyFrames = 0
 

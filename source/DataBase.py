@@ -19,10 +19,9 @@ class DBApi:
     def __del__(self):
         self.Conn.close()
 
-    def addValue(self, plate_string, qty, table='test'):
+    def addPlateRecord(self, plate_string, qty, table='test'):
         with self.Conn:
             self.Cursor.execute(self.INSERT_COMMAND.format(table), (plate_string, qty))
-
 
     def getPlate(self, plate_string):
         self.Cursor

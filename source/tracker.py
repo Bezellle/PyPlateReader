@@ -6,12 +6,14 @@ class Tracker(object):
     """Euclidean tracker class to label each plate objects"""
 
     def __init__(self, maxMissing=5, maxDistance=50):
-        #ID is individual number for each detected and tracked object
+        # ID is individual number for each detected and tracked object
+        # Objects have structure [id, array(centerX, centerY), col],
+        # where col is object number in input boxes
         self.NextObjectID = 0
         self.Objects = OrderedDict()
         self.Missing = OrderedDict()
 
-        #max number of missing object that are out of scope
+        # max number of missing object that are out of scope
         self.MaxMissing = maxMissing
 
         self.MaxDistance = maxDistance
@@ -88,6 +90,7 @@ class Tracker(object):
             #Additional points have to go out of tracking scope
             
             # loop over the unused row indexes to check if something is not assigned
+            # -1 means point is missing in current frame but still in scope
             if len(unusedRows) > 0:
                 for row in unusedRows:
                     ID = objectIds[row]

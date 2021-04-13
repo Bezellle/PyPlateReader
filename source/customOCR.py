@@ -6,8 +6,12 @@ from cv2 import resize
 
 
 class CustomOCR:
+    alphabet = list(string.ascii_uppercase)
+    numbers = [str(k) for k in range(10)]
+    classes = numbers+alphabet
+
     def __init__(self):
-        model = tf.keras.models.load_model('.\\model\\CustomOCR')
+        model = tf.keras.models.load_model('./model/CustomOCR')
         self.probModel = tf.keras.Sequential([model, tf.keras.layers.Softmax()])
 
         alphabet = list(string.ascii_uppercase)
