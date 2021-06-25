@@ -12,7 +12,6 @@ class TestObjectsSet(unittest.TestCase):
         cls.ObSet = source.objects.ObjectsSet(files_path)
 
     def test_init(self):
-
         self.assertEqual(744, len(self.ObSet.GPS))
 
 

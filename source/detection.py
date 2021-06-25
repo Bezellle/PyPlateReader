@@ -21,6 +21,12 @@ class Detection:
     and image processing to final result - license plate numbers"""
 
     MORPH_KERNEL = np.ones((3, 3), np.uint8)
+    classes = ["plate"]
+    CharNumber = 0
+    PlateNum = 0
+    EmptyFrame = 0
+    FrameNumber = 0
+
 
     def __init__(self, display=False):
         # Class constructor initialize Flags, params and 2 other classes instances (OCR and Tracker)
@@ -28,13 +34,7 @@ class Detection:
         if len(physical_devices) > 0:
             tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
-        self.classes = ["plate"]
-        self.CharNumber = 0
-        self.PlateNum = 0
-        self.EmptyFrame = 0
-        self.FrameNumber = 0
-
-        # TODO: Config file for paths
+        # TODO: Config file
         self.FLAG = edict() 
         self.FLAG.size = 416
         self.FLAG.tiny = False

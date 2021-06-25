@@ -10,19 +10,20 @@ from pathlib import Path
 img_path = glob.glob('.\\DataSet\\train\\*.jpg')
 #test_path = glob.glob('.\\video\\*.MP4')
 #UBUNTU TEST PATH
-test_path = glob.glob('./video/*.MP4')
+test_path = glob.glob('./*.MP4')
 fps_logger = FPSTracker("Frame_load", "Calibration", "Yolo_Detection", "Plate_reading", "Dataset_update", "Total")
 
 cal = Calibration(method='cutout')
 cal.loadCameraParam(cal.VideoParamPath)
 cali_framesize = cal.getImgSize()
 
-det = Detection(display=True)
+det = Detection(display=False)
 det.setYoloTensor()
 objDataSet = ObjectsSet(test_path)
-#objDataSet.loadMetaData(test_path)
 
 emptyFrames = 0
+start_frame = 1000
+skip_frame = 3
 
 video = True
 images = False
@@ -36,7 +37,7 @@ if video:
         total_frames = cap.get(cv2.CAP_PROP_FRAME_COUNT)
         objDataSet.setFramesNumber(total_frames)
 
-        next_frame = 500
+        next_frame = start_frame
 
         cap.set(cv2.CAP_PROP_POS_FRAMES, next_frame)
         while(cap.isOpened()):
@@ -47,7 +48,7 @@ if video:
             #Skip empty frames end break the loop at the end of video
             if next_frame < int(total_frames) and not ret:
                 emptyFrames += 1
-                next_frame += 3
+                next_frame += skip_frame
                 cap.set(cv2.CAP_PROP_POS_FRAMES, next_frame)
                 print("Number of empty frames detected: ", str(emptyFrames))
                 continue
@@ -72,21 +73,17 @@ if video:
                 result_list = det.findLetters(frame, boxes)
                 fps_logger["Plate_reading"].stop()
 
-                start = time.time()
                 fps_logger["Dataset_update"].start()
                 objDataSet.updateObjectDict(result_list, next_frame)
-                time.sleep(0.0001)
-                end = time.time() - start
+
                 fps_logger["Dataset_update"].stop()
 
-                print(end)
-
-                frame = cv2.resize(frame, None, fx=0.4, fy=0.4)
-                cv2.imshow("frame", frame)
+                #frame = cv2.resize(frame, None, fx=0.4, fy=0.4)
+                #cv2.imshow("frame", frame)
                 if cv2.waitKey(2) & 0xFF == ord('q'):
                     break
 
-                next_frame += 3
+                next_frame += skip_frame
                 cap.set(cv2.CAP_PROP_POS_FRAMES, next_frame)
 
         cap.release()

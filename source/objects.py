@@ -5,7 +5,7 @@ from pathlib import Path
 from math import fabs
 
 
-class Contour(object):
+class Contour:
     """Class that represent contour of the letter - store all info about it (Position on img, size, area, etc.)"""
 
     def __init__(self, con=np.ones(0), img_height=1):
@@ -64,10 +64,8 @@ class Contour(object):
         else:
             return True
 
-##############################################################################
 
-
-class PlateObject(object):
+class PlateObject:
     """Store all details about detected plate object"""
     ImgCenter = 1200
 
@@ -81,12 +79,12 @@ class PlateObject(object):
 
         self.Centr = (int((box[0] + box[2])/2.0), int((box[1] + box[3])/2))
 
-        self.Localization = []       # Camera localization history for first and last appearance of object
-        self.PlatesDict = {}         # All detected and valid plate numbers
-        self.ImgPositions = []       # All positions of object on the img (Centr)
+        self.Localization = [None]*2   # Camera localization history for first and last appearance of object
+        self.PlatesDict = {}           # All detected and valid plate numbers
+        self.ImgPositions = []         # All positions of object on the img (Centr)
         if plate_string != '':
             self.PlatesDict[plate_string] = 1
-        #TODO: Store More Data (frame number, pos history, GPS?)
+        # TODO: Store More Data (frame number, pos history, GPS?)
 
     def updateDict(self, plate_string):
         # Check if Plate number was detected, if not add new one
@@ -102,10 +100,18 @@ class PlateObject(object):
         # For now collect first and last appearance of object and calculate mean value
         # TODO: add location correctness
 
-        if len(self.Localization) == 0:
-            self.Localization.append(location)
+        if self.Localization[0] is None:
+            self.Localization[0] = location
         else:
-            self.Localization[1]=location
+            self.Localization[1] = location
+
+    def getLocation(self):
+        ret_location = []
+        for i in range(len(self.Localization[0])):
+            new_pos = (self.Localization[0][i]+self.Localization[1][i])/2
+            ret_location.append(new_pos)
+
+        return ret_location
 
     def getPlateNumber(self):
         # Check if there are any plate numbers detections
@@ -130,11 +136,8 @@ class PlateObject(object):
         self.Centr = (int((box[0] + box[2]) / 2.0), int((box[1] + box[3]) / 2))
         self.ImgPositions.append(self.Centr)
 
-###################################################################################
-
 
 class ObjectsSet(MetaData):
-    #TODO: Add inheritance from MetadataExt
     MIN_PLATE_LENGTH = 4
     MAX_PLATE_LENGTH = 8
 
@@ -142,25 +145,31 @@ class ObjectsSet(MetaData):
         super().__init__()
         self.ObjectsDict = {}
         self.ResultDict = {}
+        self.FilesPahts = []
+        for path in files_path:
+            self.FilesPahts.append(Path(path))
+
         PlateObject.ImgCenter = frame_size[0]/2
 
-        #self.MetaData = MetaData()
         self.loadMetaData(files_path)
+
+    def __del__(self):
+        super().__del__()
 
     def updateObjectDict(self, det_results, frame_number=0):
         if len(det_results) == 0:
             return
 
-        if len(self.MetaData.GPS) > 0:
-            camera_location, direction = self.MetaData.getCameraLocation(frame_number)
+        if len(self.GPS) > 0:
+            camera_location, direction = self.getCameraLocation(frame_number)
 
         # Detection results has structure: [(id, box, plate_string), (...)]
         for single_det in det_results:
             # Check if plate_string is valid according to polish law
             if len(single_det[2]) < self.MIN_PLATE_LENGTH:
-                break
+                continue
             if len(single_det[2]) > self.MAX_PLATE_LENGTH:
-                break
+                continue
 
             # Check if objectID is in the set. if it is update object with new detection, otherwise create new object
             check = self.ObjectsDict.get(single_det[0], False)
@@ -169,20 +178,21 @@ class ObjectsSet(MetaData):
             else:
                 self.ObjectsDict[single_det[0]].updateDict(single_det[2])
                 self.ObjectsDict[single_det[0]].newPosition(single_det[1])
-                if len(self.MetaData.GPS) > 0:
+                if len(self.GPS) > 0:
                     self.ObjectsDict[single_det[0]].updateLocation(camera_location)
 
     def setResultDict(self):
         # Create dict of most detected plate numbers for all detected objects. This is the final result of detection
-        for id in range(len(self.ObjectsDict)):
+        for obj in self.ObjectsDict.values():
             # key - plate_string val - number of detection
-            key, val = self.ObjectsDict[id].getPlateNumber()
+            key, val = obj.getPlateNumber()
+            location = obj.getLocation()
             if key is not None:
                 ret = self.ResultDict.get(key, False)
                 if not ret:
-                    self.ResultDict[key] = val
+                    self.ResultDict[key] = [val, location]
                 else:
-                    self.ResultDict[key] += val
+                    self.ResultDict[key][0] += val
 
     def saveResults(self):
         if len(self.ResultDict) == 0:
@@ -193,13 +203,15 @@ class ObjectsSet(MetaData):
             return
         else:
             msg = "\n\nSummary:\n\tTotal Objects detected: {}\n\tTotal Plates detected: {}"
+            file_path = './results/'+str(self.FilesPahts[1].with_suffix('.txt'))
 
             print(msg.format(len(self.ObjectsDict), len(self.ResultDict)))
 
-            with open("./log/testResult.txt", "w") as file:
-                for plate, qty in self.ResultDict.items():
-                    if qty > 0:
-                        file.write(str(plate) + " " + str(qty) + "\n")
+            with open(file_path, "w") as file:
+                file.write("Plate_nuber nuber_of_detection x y\n")
+                for plate, results in self.ResultDict.items():
+                    if results[0] > 0:
+                        file.write(str(plate) + " " + str(results[0]) + " " + str(results[1][0]) + " " + str(results[1][1]) + "\n")
 
                 file.write(msg.format(len(self.ObjectsDict), len(self.ResultDict)))
 

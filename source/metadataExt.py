@@ -28,13 +28,18 @@ class MetaData:
     def __init__(self, file_path=None, total_frames=0):
         self.BinaryData = bytearray()
         self.GPS = []
+        self.Path = Path()
         self.TotalFrames = total_frames
 
         if file_path is not None:
             if not os.path.exists(file_path):
                 raise OSError('File not found. Metadata can not be extracted')
             else:
-                self.Path = file_path
+                self.loadBin(file_path)
+
+    def __del__(self):
+        cmd = 'rm {}'
+        subprocess.run(cmd.format(self.Path), shell=True)
 
     def mapType(self, datatype):
         ctype = chr(datatype)
@@ -70,6 +75,7 @@ class MetaData:
         try:
             with open(bin_path, 'rb') as f:
                 self.BinaryData = f.read()
+                self.Path = bin_path
         except OSError:
             print("Could not load binary file with metadata")
             raise
@@ -80,7 +86,6 @@ class MetaData:
 
         #dst = file_name[:-3] + 'bin'
         dst = file_name.with_suffix('.bin')
-        #cmd = 'ffmpeg -y -i ./' + str(file_name) + ' -codec copy -map 0:3 -f rawvideo ./' + str(dst)
         cmd = 'ffmpeg -y -i ./{} -codec copy -map 0:3 -f rawvideo ./{}'
         #result = subprocess.run(['ffmpeg', '-y', '-i', str(file_name), '-codec', 'copy', '-map', '0:3', '-f', 'rawvideo',
         #                         str(dst)], shell=True, capture_output=True)
@@ -118,7 +123,10 @@ class MetaData:
         y_len = self.GPS[index+1][1] - self.GPS[index][1]
 
         dist = sqrt(x_len ** 2 + y_len ** 2)
-        sin_dir = y_len/dist
+        if dist == 0:
+            sin_dir = 1
+        else:
+            sin_dir = y_len/dist
 
         return self.GPS[index], sin_dir
 

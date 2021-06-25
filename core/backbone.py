@@ -4,6 +4,7 @@
 import tensorflow as tf
 import core.common as common
 
+
 def darknet53(input_data):
 
     input_data = common.convolutional(input_data, (3, 3,  3,  32))
@@ -35,6 +36,7 @@ def darknet53(input_data):
         input_data = common.residual_block(input_data, 1024, 512, 1024)
 
     return route_1, route_2, input_data
+
 
 def cspdarknet53(input_data):
 
@@ -104,6 +106,7 @@ def cspdarknet53(input_data):
 
     return route_1, route_2, input_data
 
+
 def cspdarknet53_tiny(input_data):
     input_data = common.convolutional(input_data, (3, 3, 3, 32), downsample=True)
     input_data = common.convolutional(input_data, (3, 3, 32, 64), downsample=True)
@@ -145,6 +148,7 @@ def cspdarknet53_tiny(input_data):
     input_data = common.convolutional(input_data, (3, 3, 512, 512))
 
     return route_1, input_data
+
 
 def darknet53_tiny(input_data):
     input_data = common.convolutional(input_data, (3, 3, 3, 16))
