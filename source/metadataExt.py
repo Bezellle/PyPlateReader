@@ -119,14 +119,15 @@ class MetaData:
 
         if index >= len(self.GPS):
             index = len(self.GPS) - 2
-        x_len = self.GPS[index+1][0] - self.GPS[index][0]
-        y_len = self.GPS[index+1][1] - self.GPS[index][1]
+        sin_dir = 0
+        #x_len = self.GPS[index+1][0] - self.GPS[index][0]
+        #y_len = self.GPS[index+1][1] - self.GPS[index][1]
 
-        dist = sqrt(x_len ** 2 + y_len ** 2)
-        if dist == 0:
-            sin_dir = 1
-        else:
-            sin_dir = y_len/dist
+        #dist = sqrt(x_len ** 2 + y_len ** 2)
+        #if dist == 0:
+        #    sin_dir = 1
+        #else:
+        #   sin_dir = y_len/dist
 
         return self.GPS[index], sin_dir
 

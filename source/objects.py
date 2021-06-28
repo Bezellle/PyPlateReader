@@ -99,7 +99,6 @@ class PlateObject:
         # Store GPS data of camera position to calculate object position
         # For now collect first and last appearance of object and calculate mean value
         # TODO: add location correctness
-
         if self.Localization[0] is None:
             self.Localization[0] = location
         else:
@@ -107,6 +106,10 @@ class PlateObject:
 
     def getLocation(self):
         ret_location = []
+
+        if self.Localization[0] is None or self.Localization[1] is None:
+            return [0, 0]
+
         for i in range(len(self.Localization[0])):
             new_pos = (self.Localization[0][i]+self.Localization[1][i])/2
             ret_location.append(new_pos)
@@ -203,7 +206,7 @@ class ObjectsSet(MetaData):
             return
         else:
             msg = "\n\nSummary:\n\tTotal Objects detected: {}\n\tTotal Plates detected: {}"
-            file_path = './results/'+str(self.FilesPahts[1].with_suffix('.txt'))
+            file_path = str(self.FilesPahts[1].with_suffix('.txt'))
 
             print(msg.format(len(self.ObjectsDict), len(self.ResultDict)))
 

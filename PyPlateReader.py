@@ -10,7 +10,7 @@ from pathlib import Path
 img_path = glob.glob('.\\DataSet\\train\\*.jpg')
 #test_path = glob.glob('.\\video\\*.MP4')
 #UBUNTU TEST PATH
-test_path = glob.glob('./*.MP4')
+test_path = glob.glob('./results/scan1/*.MP4')
 fps_logger = FPSTracker("Frame_load", "Calibration", "Yolo_Detection", "Plate_reading", "Dataset_update", "Total")
 
 cal = Calibration(method='cutout')
@@ -22,8 +22,8 @@ det.setYoloTensor()
 objDataSet = ObjectsSet(test_path)
 
 emptyFrames = 0
-start_frame = 1000
-skip_frame = 3
+start_frame = 2000
+skip_frame = 2
 
 video = True
 images = False
