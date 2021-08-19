@@ -221,10 +221,9 @@ class ObjectsSet(MetaData):
 
                 file.write(msg.format(len(self.ObjectsDict), len(self.ResultDict)))
 
-    def loadMetaData(self, file_paths):
+    def loadMetaData(self, file_path):
         # Only video from front camera store gps metadata
-        for txt_file in file_paths:
-            file = Path(txt_file)
+            file = Path(file_path)
             if file.name[2:4] == 'FR':
                 self.loadGPSData(file)
 
