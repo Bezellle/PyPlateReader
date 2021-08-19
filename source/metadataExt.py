@@ -39,7 +39,7 @@ class MetaData:
 
     def __del__(self):
         cmd = 'rm {}'
-        subprocess.run(cmd.format(self.Path), shell=True)
+        # subprocess.run(cmd.format(self.Path), shell=True)
 
     def mapType(self, datatype):
         ctype = chr(datatype)
@@ -82,13 +82,12 @@ class MetaData:
 
     @staticmethod
     def makeBin(file_name):
-        #CMD command: ffmpeg -y -i GPFR1846.MP4 -codec copy -map 0:3 -f rawvideo GPFR1846.bin
+        # CMD command for extracting meeta data with ffmpeg:
+        # ffmpeg -y -i GPFR1846.MP4 -codec copy -map 0:3 -f rawvideo GPFR1846.bin
 
         #dst = file_name[:-3] + 'bin'
         dst = file_name.with_suffix('.bin')
         cmd = 'ffmpeg -y -i ./{} -codec copy -map 0:3 -f rawvideo ./{}'
-        #result = subprocess.run(['ffmpeg', '-y', '-i', str(file_name), '-codec', 'copy', '-map', '0:3', '-f', 'rawvideo',
-        #                         str(dst)], shell=True, capture_output=True)
 
         result = subprocess.run(cmd.format(str(file_name), str(dst)), shell=True, check=True)
 

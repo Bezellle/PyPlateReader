@@ -39,8 +39,8 @@ class Detection:
         self.FLAG.size = 416
         self.FLAG.tiny = False
         self.FLAG.model = "yolov4"
-        #self.FLAG.weights = './model/custom-416'
-        self.FLAG.weights = './model/yolo_model'
+        self.FLAG.weights = './model/modelYolov4'
+        #self.FLAG.weights = './model/yolo_model'
         self.FLAG.framework = "tf"
         self.FLAG.display = display
 

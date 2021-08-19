@@ -148,9 +148,12 @@ class ObjectsSet(MetaData):
         super().__init__()
         self.ObjectsDict = {}
         self.ResultDict = {}
-        self.FilesPahts = []
-        for path in files_path:
-            self.FilesPahts.append(Path(path))
+        self.FilesPaths = []
+        if type(files_path) == str:
+            self.FilesPaths.append(Path(files_path))
+        else:
+            for path in files_path:
+                self.FilesPaths.append(Path(path))
 
         PlateObject.ImgCenter = frame_size[0]/2
 
@@ -206,7 +209,7 @@ class ObjectsSet(MetaData):
             return
         else:
             msg = "\n\nSummary:\n\tTotal Objects detected: {}\n\tTotal Plates detected: {}"
-            file_path = str(self.FilesPahts[1].with_suffix('.txt'))
+            file_path = str(self.FilesPaths[0].with_suffix('.txt'))
 
             print(msg.format(len(self.ObjectsDict), len(self.ResultDict)))
 
