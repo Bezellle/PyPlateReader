@@ -7,7 +7,6 @@ from pathlib import Path
 
 def pad(n, base=4):
     i = n
-
     while i % base != 0:
         i += 1
     return i
@@ -129,7 +128,3 @@ class MetaData:
         #   sin_dir = y_len/dist
 
         return self.GPS[index], sin_dir
-
-
-
-

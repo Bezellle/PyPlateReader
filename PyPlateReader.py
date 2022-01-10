@@ -1,11 +1,11 @@
-from source.calibration import Calibration
-from source.detection import Detection
-from source.fps import FPSTracker
-from source.objects import ObjectsSet
-import cv2
 import glob
-import time
-from pathlib import Path
+
+import cv2
+
+from source.imgProcess.calibration import Calibration
+from source.detection import Detection
+from source.utils.fps import FPSTracker
+from source.objectsSet import ObjectsSet
 
 img_path = glob.glob('.\\DataSet\\train\\*.jpg')
 # test_path = glob.glob('.\\video\\*.MP4')
@@ -20,9 +20,8 @@ cali_framesize = cal.getImgSize()
 det = Detection(display=False)
 det.setYoloTensor()
 
-
 emptyFrames = 0
-start_frame = 2000
+start_frame = 1
 skip_frame = 2
 
 video = True

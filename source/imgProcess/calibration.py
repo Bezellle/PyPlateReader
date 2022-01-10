@@ -21,10 +21,6 @@ class Calibration(object):
         else:
             assert "Wrong calibration method has been chosen. Available oprions: 'cutout' or 'undistort'"
 
-
-#########End of constructor###################################
-
-
     def calibrate(self):
         CHECKERBOARD = (6, 9)
         subpix_criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.1)
@@ -72,15 +68,8 @@ class Calibration(object):
         self.Dim = _img_shape[::-1]
         print(self.Dim)
         
-        self.saveParam()    #save calibration parameters to file
+        self.saveParam()
         self.flag=1
-
-#print("Found " + str(N_OK) + " valid images for calibration")
-#print("DIM=" + str(_img_shape[::-1]))
-#print("K=np.array(" + str(K.tolist()) + ")")
-#print("D=np.array(" + str(D.tolist()) + ")")
-
-#########End of calibrate func###################################
 
     def calibrateVideo(self):
         CHECKERBOARD = (6, 9)
@@ -139,16 +128,10 @@ class Calibration(object):
         self.Dim = _img_shape[::-1]
         print(self.Dim)
         
-        self.saveParam(self.VideoParamPath)    #save calibration parameters to file
+        self.saveParam(self.VideoParamPath)
         self.flag = 1
 
         cap.release()
-#print("Found " + str(N_OK) + " valid images for calibration")
-#print("DIM=" + str(_img_shape[::-1]))
-#print("K=np.array(" + str(K.tolist()) + ")")
-#print("D=np.array(" + str(D.tolist()) + ")")
-
-
 
     def saveParam(self, path="testCali.txt"):
         with open(path,"w") as file:
@@ -161,7 +144,6 @@ class Calibration(object):
                 for val in item:
                     file.write(str(val) + " ")
                 file.write("\n")
-#########End of saveParam func###################################
 
     def loadCameraParam(self, path="testCali.txt" ):          #Load Resoltultion (Dim) Camera Matrix (K) and Dceoff
         with open(path, "r") as file:
@@ -178,7 +160,6 @@ class Calibration(object):
         self.K = np.array([[float(x) for x in line.replace("\n","").split(" ")] for line in k])
         self.flag = 1
 
-#########End of loadCameraParam###################################
     def undistort(self, img, dim2=None, dim3=None):
         #img = cv2.imread(img_path)
         if self.flag == 1:

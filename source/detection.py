@@ -8,12 +8,11 @@ from tensorflow.compat.v1 import ConfigProto
 from tensorflow.compat.v1 import InteractiveSession
 from easydict import EasyDict as edict
 import time
-import glob
 import copy
 
 from source.tracker import Tracker
-from source.objects import Contour, PlateObject
-from source.customOCR import CustomOCR
+from source.objects.letterContour import Contour
+from source.OCR.customOCR import CustomOCR
 
 
 class Detection:
@@ -46,32 +45,8 @@ class Detection:
 
         self.OCR = CustomOCR()
         self.Track = Tracker(maxMissing=5, maxDistance=225)
+        self.ImgProcessor = ImgProcessor()
 
-    def preprocess(self, img):
-        # preprocess method perform all image preprocessing - change to grayscale, thresholding, gaussianblur etc.
-        #img=self.rotate(src,-15)
-
-        if len(img.shape) == 3:
-            img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-            #print("Char image for recognition should be in grayscale! \n Size has been changed!")
-        #img=self.maximizeContrast(img)
-
-        img = cv2.GaussianBlur(img, (5, 5), 0)
-
-        #apply OTSU for bigger plates
-        if img.shape[1] < 600:
-            img_thresh = cv2.adaptiveThreshold(img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 55, 4)
-            img_thresh = cv2.dilate(img_thresh, self.MORPH_KERNEL, iterations=1)
-            img_thresh = cv2.erode(img_thresh, self.MORPH_KERNEL, iterations=2)
-        else:
-            img_thresh = cv2.threshold(img, 128, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)[1]
-            img_thresh = cv2.bitwise_not(img_thresh)
-            img_thresh = cv2.dilate(img_thresh, self.MORPH_KERNEL, iterations=1)
-
-        img_thresh = cv2.dilate(img_thresh, self.MORPH_KERNEL, iterations=1)
-        #img_thresh = cv2.erode(img_thresh, MORPH_KERNEL, iterations=2)
-        #img_thresh = cv2.dilate(imgThresh, MORPH_KERNEL, iterations=1)
-        return img_thresh
 
     def setYoloTensor(self):
         # Loads Yolo model and config. Is called once at the begging of the detection
@@ -178,9 +153,6 @@ class Detection:
         # Method responsible for extracting license plate numbers from image after yolo detection.
         # Uses Tracker and OCR
 
-        # plate examples for test (will be replaced with unittest)
-        #if img == None and boxes == None: plates=glob.glob('./DataSet/Plates/*.jpg')
-
         # result_list is result of the method. it stores tuples of (id, box, plate_string)
         result_list = []
         error_num = 0
@@ -208,22 +180,15 @@ class Detection:
                 continue
 
             # Check if image is blurry. If True - skip
-            mean, blurry = self.blurryFFT(plt, size=35, thresh=-15)
-            if blurry:
-                if self.FLAG.display:
-                    text = "Blurry ({:.4f})"
-                    text = text.format(mean)
-                    cv2.putText(plt, text, (5, 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, [200, 200, 0], 2)
-                else:
-                    print("Blurry image detected")
-                    #continue
+            if self.is_blurry(plt):
+                continue
 
             if self.FLAG.display:
                 cv2.imshow("Source", plt)
                 cv2.waitKey(1)
 
             # apply: threshold, gaussian blur and morph
-            plt = self.preprocess(plt)
+            plt = self.ImgProcessor.preprocess(plt)
 
             # TODO: Change contours to blobs!
             # find contours on image: with canny edges first
@@ -296,6 +261,17 @@ class Detection:
             result_list.append((id, boxes[boxId], plate_string))
 
         return result_list
+
+    def is_blurry(self, plt):
+        mean, blurry = self.blurryFFT(plt, size=35, thresh=-15)
+        if blurry:
+            if self.FLAG.display:
+                text = "Blurry ({:.4f})"
+                text = text.format(mean)
+                cv2.putText(plt, text, (5, 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, [200, 200, 0], 2)
+            else:
+                print("Blurry image detected")
+            return True
 
     @staticmethod
     def rotate(img, angle, center=None, scale=1.0):
