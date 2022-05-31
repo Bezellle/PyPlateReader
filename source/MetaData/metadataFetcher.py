@@ -12,7 +12,7 @@ def pad(n, base=4):
     return i
 
 
-class MetaData:
+class MetaDataFetcher:
     MapType = {'c': ['c', 1],
                'L': ['L', 4],
                's': ['h', 2],

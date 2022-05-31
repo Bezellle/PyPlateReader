@@ -1,13 +1,12 @@
 import unittest
 from pathlib import Path
-from source.metadataExt import MetaData
-import subprocess
+from source.MetaData.metadataFetcher import MetaDataFetcher
 
 
 class TestMetaData(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.Metadata = MetaData(total_frames=500)
+        cls.Metadata = MetaDataFetcher(total_frames=500)
         cls.VideoPath = Path('../video/GPFR3073.MP4')
         cls.BinPath = Path('../video/GPFR3073.bin')
 

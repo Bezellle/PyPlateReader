@@ -1,9 +1,9 @@
-from source.metadataExt import MetaData
+from source.MetaData.metadataFetcher import MetaDataFetcher
 from pathlib import Path
 from source.objects.plateObject import PlateObject
 
 
-class ObjectsSet(MetaData):
+class ObjectsSet(MetaDataFetcher):
     MIN_PLATE_LENGTH = 4
     MAX_PLATE_LENGTH = 8
 

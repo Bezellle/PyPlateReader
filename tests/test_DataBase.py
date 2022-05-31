@@ -1,6 +1,5 @@
 import unittest
-from source.DataBase import DBApi
-import subprocess
+from source.Dao.DataBase import DBApi
 
 
 class TestDataBase(unittest.TestCase):
